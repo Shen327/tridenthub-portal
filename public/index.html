@@ -117,34 +117,80 @@ const REST = "/api/supa";
 function baseHeaders(){
   return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" };
 }
-function toQs(params){ const q=new URLSearchParams(); for(const [k,v] of Object.entries(params||{})) q.append(k,v); return q.toString(); }
-function buildFilters(filters={}){ const out={}; for(const [k,v] of Object.entries(filters)) out[k] = `eq.${encodeURIComponent(v)}`; return out; }
-function buildOrIlike(columns=[],term=""){ const safe=term.replace(/[()%]/g,""); const parts=columns.map(c=>`${c}.ilike.*${safe}*`); return parts.length?{ or:`(${parts.join(",")})` }:{}; }
+function toQS(obj) {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined || v === null || v === '') continue;
+    u.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+  }
+  return u.toString();
+}
+function buildFilters(filters = {}) {
+  const out = {};
+  for (const [col, rule] of Object.entries(filters)) {
+    // rule can be a plain value (eq) or an object {op, value}
+    if (rule && typeof rule === 'object' && 'op' in rule) {
+      const op = rule.op;                       // e.g. 'eq', 'ilike', 'gte'
+      const val = rule.value;
+      out[col] = `${op}.${val}`;
+    } else {
+      out[col] = `eq.${rule}`;
+    }
+  }
+  return out;
+}
+function buildOrIlike(columns = [], term = '') {
+  if (!term || !columns.length) return {};
+  // cf. PostgREST: or=(col1.ilike.*term*,col2.ilike.*term*)
+  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%','\\%')}*`);
+  return { or: `(${pats.join(',')})` };
+}
+async function restFetch(path, { method = 'GET', body, prefer } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (prefer) headers['Prefer'] = prefer;
+  const res = await fetch(path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  // 204 (no content) for deletes/updates with return=minimal
+  return res.status === 204 ? null : res.json();
+}
+async function restSelect(
+  table,
+  { select = '*', filters = {}, search = null, order = null, limit = null, offset = null } = {}
+) {
+  const qs = { select, ...buildFilters(filters), ...(search ? buildOrIlike(search.columns, search.term) : {}) };
+  if (order) {
+    const desc = order.startsWith('-');
+    qs.order = `${desc ? order.slice(1) : order}.${desc ? 'desc' : 'asc'}`;
+  }
+  if (limit != null) qs.limit = String(limit);
+  if (offset != null) qs.offset = String(offset);
 
-async function restSelect(table,{select="*",filters={},search=null,order=null,limit=null,offset=null}={}){
-  const qs = { select, ...buildFilters(filters), ...(search?buildOrIlike(search.columns,search.term):{}) };
-  if(order){ const desc=order.startsWith("-"); qs.order = `${desc?order.slice(1):order}.${desc?"desc":"asc"}`; }
-  if(limit!=null) qs.limit=String(limit);
-  if(offset!=null) qs.offset=String(offset);
-  const url = `${REST}/${table}?${toQs(qs)}`;
-  const res = await fetch(url,{headers:baseHeaders()});
-  if(!res.ok) throw new Error(await res.text());
-  return res.json();
+  const url = `${REST}/${encodeURIComponent(table)}?${toQS(qs)}`;
+  return restFetch(url, { method: 'GET' });
 }
-async function restInsert(table,row){
-  const res = await fetch(`${REST}/${table}`,{method:"POST",headers:{...baseHeaders(),Prefer:"return=representation"},body:JSON.stringify(row)});
-  if(!res.ok) throw new Error(await res.text());
-  return res.json();
+
+async function restInsert(table, rows, { returning = 'representation' } = {}) {
+  const prefer = `return=${returning}`; // 'representation' | 'minimal'
+  const url = `${REST}/${encodeURIComponent(table)}`;
+  return restFetch(url, { method: 'POST', body: Array.isArray(rows) ? rows : [rows], prefer });
 }
-async function restUpdate(table,id,patch){
-  const res = await fetch(`${REST}/${table}?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{...baseHeaders(),Prefer:"return=representation"},body:JSON.stringify(patch)});
-  if(!res.ok) throw new Error(await res.text());
-  return res.json();
+
+async function restUpdate(table, patch, { filters = {}, returning = 'representation' } = {}) {
+  const qs = toQS(buildFilters(filters));
+  const url = `${REST}/${encodeURIComponent(table)}?${qs}`;
+  const prefer = `return=${returning}`;
+  return restFetch(url, { method: 'PATCH', body: patch, prefer });
 }
-async function restDelete(table,id){
-  const res = await fetch(`${REST}/${table}?id=eq.${encodeURIComponent(id)}`,{method:"DELETE",headers:baseHeaders()});
-  if(!res.ok) throw new Error(await res.text());
-  return true;
+
+async function restDelete(table, { filters = {}, returning = 'minimal' } = {}) {
+  const qs = toQS(buildFilters(filters));
+  const url = `${REST}/${encodeURIComponent(table)}?${qs}`;
+  const prefer = `return=${returning}`;
+  return restFetch(url, { method: 'DELETE', prefer });
 }
 
 /* ===================== PASSGATE ===================== */
