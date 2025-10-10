@@ -109,8 +109,8 @@ function showErrBar(msg){ toast(msg); }
 function fmt(v){ return v==null ? '' : String(v); }
 
 /* ===================== SUPABASE (REST) ===================== */
-const SUPABASE_URL = "https://hsjinkyuxfgeqxervcmz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzamlua3l1eGZnZXJ2Y216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMzkzNjAsImV4cCI6MjA2ODkxNTM2MH0.0frju_BvUsDw4OaGFQHbqlgel4n-2aWBB-569bm-CQU"; // <-- your anon key
+const SUPABASE_URL = 'https://hsjinkyuxfgeqxervcmz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzamlua3l1eGZnZXJ2Y216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMzkzNjAsImV4cCI6MjA2ODkxNTM2MH0.0frju_BvUsDw4OaGFQHbqlgel4n-2aWBB-569bm-CQU‘;
 
 /* Direct REST helpers */
 const REST = `${SUPABASE_URL}/rest/v1`;
@@ -118,16 +118,16 @@ function baseHeaders(){
   return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" };
 }
   
-function toOrder(order) {
-  if (!order) return null;
-  const desc = order.startsWith('-');
-  const col = desc ? order.slice(1) : order;
-  return `${col}.${desc ? 'desc' : 'asc'}`;
+function baseHeaders() {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+  };
 }
 
 function toQS(obj) {
   const u = new URLSearchParams();
-  for (const [k, v] of Object.entries(obj)) {
+  for (const [k, v] of Object.entries(obj || {})) {
     if (v === undefined || v === null || v === '') continue;
     u.set(k, v);
   }
@@ -137,32 +137,28 @@ function toQS(obj) {
 function buildFilters(filters = {}) {
   const out = {};
   for (const [col, rule] of Object.entries(filters)) {
-    if (rule && typeof rule === 'object' && 'op' in rule) {
-      out[col] = `${rule.op}.${rule.value}`;
-    } else {
-      out[col] = `eq.${rule}`;
-    }
+    if (rule && typeof rule === 'object' && 'op' in rule) out[col] = `${rule.op}.${rule.value}`;
+    else out[col] = `eq.${rule}`;
   }
   return out;
 }
-
 function buildOrIlike(columns = [], term = '') {
   if (!term || !columns.length) return {};
-  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%', '\\%')}*`);
+  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%','\\%')}*`);
   return { or: `(${pats.join(',')})` };
 }
 
 async function restFetch(path, { method = 'GET', body, prefer } = {}) {
-  const headers = {
-    ...baseHeaders(),               // <-- apikey + bearer
-    'Content-Type': 'application/json'
-  };
+  const headers = { ...baseHeaders(), 'Content-Type': 'application/json' };
   if (prefer) headers['Prefer'] = prefer;
 
-  // call Supabase REST directly
+  // Build absolute URL to Supabase REST
   const url = path.startsWith('http')
     ? path
     : `${REST}/${path.replace(/^\/+/, '')}`;
+
+  // 🔎 quick debug so you can see the exact URL/method in DevTools
+  console.log('[REST]', method, url);
 
   const res = await fetch(url, {
     method,
@@ -171,11 +167,23 @@ async function restFetch(path, { method = 'GET', body, prefer } = {}) {
     mode: 'cors'
   });
 
-  if (!res.ok) throw new Error(await res.text());
+  // If it fails, try to print the error body (if any)
+  if (!res.ok) {
+    let text = '';
+    try { text = await res.text(); } catch {}
+    throw new Error(text || `${res.status} ${res.statusText}`);
+  }
   return res.status === 204 ? null : res.json();
 }
 
-// SELECT
+function restOrder(order) {
+  if (!order) return null;
+  const desc = order.startsWith('-');
+  const col = desc ? order.slice(1) : order;
+  return `${col}.${desc ? 'desc' : 'asc'}`;
+}
+
+// ---------- CRUD helpers your tables already use ----------
 async function restSelect(
   table,
   { select='*', filters={}, search=null, order=null, limit=null, offset=null } = {}
@@ -185,7 +193,7 @@ async function restSelect(
     ...buildFilters(filters),
     ...(search ? buildOrIlike(search.columns, search.term) : {})
   };
-  const ord = toOrder(order);
+  const ord = restOrder(order);
   if (ord) qs.order = ord;
   if (limit != null)  qs.limit  = String(limit);
   if (offset != null) qs.offset = String(offset);
@@ -194,7 +202,6 @@ async function restSelect(
   return restFetch(url, { method: 'GET' });
 }
 
-// INSERT
 async function restInsert(table, row) {
   return restFetch(table, {
     method: 'POST',
@@ -202,8 +209,6 @@ async function restInsert(table, row) {
     prefer: 'return=representation'
   });
 }
-
-// UPDATE by id
 async function restUpdate(table, id, patch) {
   return restFetch(`${table}?id=eq.${id}`, {
     method: 'PATCH',
@@ -211,15 +216,12 @@ async function restUpdate(table, id, patch) {
     prefer: 'return=representation'
   });
 }
-
-// DELETE by id
 async function restDelete(table, id) {
   return restFetch(`${table}?id=eq.${id}`, {
     method: 'DELETE',
     prefer: 'return=representation'
   });
 }
-
 
 /* ===================== PASSGATE ===================== */
 const PASS_PLAIN = "TRIDENTHUB_portal";
