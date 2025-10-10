@@ -1,7 +1,6 @@
 export const config = { runtime: 'edge' };
 
-const allowOrigin = process.env.ALLOW_ORIGIN || '*'; // set to your domain later
-
+const allowOrigin = process.env.ALLOW_ORIGIN || '*';
 const cors = {
   'Access-Control-Allow-Origin': allowOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
@@ -14,10 +13,10 @@ export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const url = new URL(req.url);
-  // path like /api/supa/tasks
+  // /api/supa/<table>
   const [, , , table] = url.pathname.split('/');
   if (!ALLOWED.has(table)) {
-    return new Response('Forbidden', { status: 403, headers: cors });
+    return new Response(`Forbidden table ${table}`, { status: 403, headers: cors });
   }
 
   const sbUrl = process.env.SUPABASE_URL;
@@ -35,11 +34,15 @@ export default async function handler(req) {
       'Content-Type': 'application/json',
       Prefer: req.headers.get('Prefer') ?? '',
     },
-    body: ['GET','DELETE','OPTIONS'].includes(req.method) ? undefined : await req.text(),
+    body: ['GET', 'DELETE', 'OPTIONS'].includes(req.method) ? undefined : await req.text(),
   };
 
-  const resp = await fetch(target, init);
-  const body = await resp.text();
-  const ct = resp.headers.get('content-type') || 'application/json';
-  return new Response(body, { status: resp.status, headers: { ...cors, 'Content-Type': ct }});
+  try {
+    const resp = await fetch(target, init);
+    const body = await resp.text();
+    const ct = resp.headers.get('content-type') || 'application/json';
+    return new Response(body, { status: resp.status, headers: { ...cors, 'Content-Type': ct } });
+  } catch (e) {
+    return new Response(`Upstream fetch failed: ${e}`, { status: 502, headers: cors });
+  }
 }
