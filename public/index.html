@@ -113,44 +113,53 @@ const SUPABASE_URL = "https://hsjinkyuxfgeqxervcmz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzamlua3l1eGZnZXJ2Y216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMzkzNjAsImV4cCI6MjA2ODkxNTM2MH0.0frju_BvUsDw4OaGFQHbqlgel4n-2aWBB-569bm-CQU"; // <-- your anon key
 
 /* Direct REST helpers */
-const REST = "/api/supa";
+const REST = `${SUPABASE_URL}/rest/v1`;
 function baseHeaders(){
   return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json" };
 }
+  
+function toOrder(order) {
+  if (!order) return null;
+  const desc = order.startsWith('-');
+  const col = desc ? order.slice(1) : order;
+  return `${col}.${desc ? 'desc' : 'asc'}`;
+}
+
 function toQS(obj) {
   const u = new URLSearchParams();
   for (const [k, v] of Object.entries(obj)) {
     if (v === undefined || v === null || v === '') continue;
-    u.set(k, typeof v === 'string' ? v : JSON.stringify(v));
+    u.set(k, v);
   }
   return u.toString();
 }
+
 function buildFilters(filters = {}) {
   const out = {};
   for (const [col, rule] of Object.entries(filters)) {
-    // rule can be a plain value (eq) or an object {op, value}
     if (rule && typeof rule === 'object' && 'op' in rule) {
-      const op = rule.op;                       // e.g. 'eq', 'ilike', 'gte'
-      const val = rule.value;
-      out[col] = `${op}.${val}`;
+      out[col] = `${rule.op}.${rule.value}`;
     } else {
       out[col] = `eq.${rule}`;
     }
   }
   return out;
 }
+
 function buildOrIlike(columns = [], term = '') {
   if (!term || !columns.length) return {};
-  // cf. PostgREST: or=(col1.ilike.*term*,col2.ilike.*term*)
-  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%','\\%')}*`);
+  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%', '\\%')}*`);
   return { or: `(${pats.join(',')})` };
 }
-  
+
 async function restFetch(path, { method = 'GET', body, prefer } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {
+    ...baseHeaders(),               // <-- apikey + bearer
+    'Content-Type': 'application/json'
+  };
   if (prefer) headers['Prefer'] = prefer;
 
-  // 👇 prepend your proxy base only for relative paths
+  // call Supabase REST directly
   const url = path.startsWith('http')
     ? path
     : `${REST}/${path.replace(/^\/+/, '')}`;
@@ -159,49 +168,58 @@ async function restFetch(path, { method = 'GET', body, prefer } = {}) {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    mode: 'cors'
   });
 
   if (!res.ok) throw new Error(await res.text());
-  // 204 (no content) for updates/deletes with return=minimal
   return res.status === 204 ? null : res.json();
 }
 
+// SELECT
 async function restSelect(
   table,
-  { select = '*', filters = {}, search = null, order = null, limit = null, offset = null } = {}
-) {
-  const qs = { select, ...buildFilters(filters), ...(search ? buildOrIlike(search.columns, search.term) : {}) };
-  if (order) {
-    const desc = order.startsWith('-');
-    qs.order = `${desc ? order.slice(1) : order}.${desc ? 'desc' : 'asc'}`;
-  }
-  if (limit != null) qs.limit = String(limit);
+  { select='*', filters={}, search=null, order=null, limit=null, offset=null } = {}
+){
+  const qs = {
+    select,
+    ...buildFilters(filters),
+    ...(search ? buildOrIlike(search.columns, search.term) : {})
+  };
+  const ord = toOrder(order);
+  if (ord) qs.order = ord;
+  if (limit != null)  qs.limit  = String(limit);
   if (offset != null) qs.offset = String(offset);
 
-  // 👇 build a relative path (no domain, no /api/supa here)
-  const path = `${encodeURIComponent(table)}?${toQS(qs)}`;
-  return restFetch(path, { method: 'GET' });
+  const url = `${table}?${toQS(qs)}`;
+  return restFetch(url, { method: 'GET' });
 }
 
-async function restInsert(table, rows, { returning = 'representation' } = {}) {
-  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
-  const path = `${encodeURIComponent(table)}`;
-  return restFetch(path, { method: 'POST', body: rows, prefer });
+// INSERT
+async function restInsert(table, row) {
+  return restFetch(table, {
+    method: 'POST',
+    body: row,
+    prefer: 'return=representation'
+  });
 }
 
-async function restUpdate(table, matchFilter, patch, { returning = 'representation' } = {}) {
-  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
-  const qs = toQS(buildFilters(matchFilter));
-  const path = `${encodeURIComponent(table)}?${qs}`;
-  return restFetch(path, { method: 'PATCH', body: patch, prefer });
+// UPDATE by id
+async function restUpdate(table, id, patch) {
+  return restFetch(`${table}?id=eq.${id}`, {
+    method: 'PATCH',
+    body: patch,
+    prefer: 'return=representation'
+  });
 }
 
-async function restDelete(table, matchFilter, { returning = 'representation' } = {}) {
-  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
-  const qs = toQS(buildFilters(matchFilter));
-  const path = `${encodeURIComponent(table)}?${qs}`;
-  return restFetch(path, { method: 'DELETE', prefer });
+// DELETE by id
+async function restDelete(table, id) {
+  return restFetch(`${table}?id=eq.${id}`, {
+    method: 'DELETE',
+    prefer: 'return=representation'
+  });
 }
+
 
 /* ===================== PASSGATE ===================== */
 const PASS_PLAIN = "TRIDENTHUB_portal";
