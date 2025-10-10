@@ -145,18 +145,27 @@ function buildOrIlike(columns = [], term = '') {
   const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%','\\%')}*`);
   return { or: `(${pats.join(',')})` };
 }
+  
 async function restFetch(path, { method = 'GET', body, prefer } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (prefer) headers['Prefer'] = prefer;
-  const res = await fetch(path, {
+
+  // 👇 prepend your proxy base only for relative paths
+  const url = path.startsWith('http')
+    ? path
+    : `${REST}/${path.replace(/^\/+/, '')}`;
+
+  const res = await fetch(url, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : undefined,
   });
+
   if (!res.ok) throw new Error(await res.text());
-  // 204 (no content) for deletes/updates with return=minimal
+  // 204 (no content) for updates/deletes with return=minimal
   return res.status === 204 ? null : res.json();
 }
+
 async function restSelect(
   table,
   { select = '*', filters = {}, search = null, order = null, limit = null, offset = null } = {}
@@ -169,28 +178,29 @@ async function restSelect(
   if (limit != null) qs.limit = String(limit);
   if (offset != null) qs.offset = String(offset);
 
-  const url = `${REST}/${encodeURIComponent(table)}?${toQS(qs)}`;
-  return restFetch(url, { method: 'GET' });
+  // 👇 build a relative path (no domain, no /api/supa here)
+  const path = `${encodeURIComponent(table)}?${toQS(qs)}`;
+  return restFetch(path, { method: 'GET' });
 }
 
 async function restInsert(table, rows, { returning = 'representation' } = {}) {
-  const prefer = `return=${returning}`; // 'representation' | 'minimal'
-  const url = `${REST}/${encodeURIComponent(table)}`;
-  return restFetch(url, { method: 'POST', body: Array.isArray(rows) ? rows : [rows], prefer });
+  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
+  const path = `${encodeURIComponent(table)}`;
+  return restFetch(path, { method: 'POST', body: rows, prefer });
 }
 
-async function restUpdate(table, patch, { filters = {}, returning = 'representation' } = {}) {
-  const qs = toQS(buildFilters(filters));
-  const url = `${REST}/${encodeURIComponent(table)}?${qs}`;
-  const prefer = `return=${returning}`;
-  return restFetch(url, { method: 'PATCH', body: patch, prefer });
+async function restUpdate(table, matchFilter, patch, { returning = 'representation' } = {}) {
+  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
+  const qs = toQS(buildFilters(matchFilter));
+  const path = `${encodeURIComponent(table)}?${qs}`;
+  return restFetch(path, { method: 'PATCH', body: patch, prefer });
 }
 
-async function restDelete(table, { filters = {}, returning = 'minimal' } = {}) {
-  const qs = toQS(buildFilters(filters));
-  const url = `${REST}/${encodeURIComponent(table)}?${qs}`;
-  const prefer = `return=${returning}`;
-  return restFetch(url, { method: 'DELETE', prefer });
+async function restDelete(table, matchFilter, { returning = 'representation' } = {}) {
+  const prefer = returning === 'minimal' ? 'return=minimal' : 'return=representation';
+  const qs = toQS(buildFilters(matchFilter));
+  const path = `${encodeURIComponent(table)}?${qs}`;
+  return restFetch(path, { method: 'DELETE', prefer });
 }
 
 /* ===================== PASSGATE ===================== */
