@@ -1,11 +1,6 @@
 {
   "cleanUrls": true,
-  "functions": {
-    "supa.js": { "runtime": "edge" }
-  },
   "rewrites": [
-    { "source": "/supa", "destination": "/supa.js" },
-    { "source": "/supa/:path*", "destination": "/supa.js" },
-    { "source": "/", "destination": "/index.html" }
+    { "source": "/", "destination": "/public/index.html" }
   ]
 }
