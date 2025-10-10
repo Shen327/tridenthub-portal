@@ -1,31 +1,37 @@
-export const config = { runtime: 'edge' };
+// File: api/supa/[[...path]].js
+export const config = { runtime: 'nodejs18.x' }; // use Node runtime on Vercel
 
-const allowOrigin = process.env.ALLOW_ORIGIN || '*';
-const cors = {
-  'Access-Control-Allow-Origin': allowOrigin,
-  'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers':
-    'authorization, apikey, content-type, prefer, x-client-info',
-};
-
+// Tables you allow the portal to touch
 const ALLOWED = new Set(['tasks', 'clients', 'sites', 'equipments', 'inspections']);
 
+const cors = {
+  'Access-Control-Allow-Origin': process.env.ALLOW_ORIGIN || '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+};
+
 export default async function handler(req) {
+  // CORS preflight
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
-  const url = new URL(req.url);         // /api/supa/<table>?qs
-  const [, , table] = url.pathname.split('/');
-
+  const url = new URL(req.url);
+  // Paths that match:
+  //   /api/supa         -> []            (not allowed)
+  //   /api/supa/tasks   -> ["tasks"]
+  //   /api/supa/tasks/1 -> ["tasks","1"] (id part is ignored here)
+  const parts = url.pathname.split('/').slice(3); // remove ["","api","supa"]
+  const table = parts[0] || '';
   if (!ALLOWED.has(table)) {
     return new Response(`Forbidden table ${table}`, { status: 403, headers: cors });
   }
 
   const sUrl = process.env.SUPABASE_URL;
-  const sKey = process.env.SUPABASE_ANON_KEY;
+  const sKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE;
   if (!sUrl || !sKey) {
-    return new Response('Server not configured (missing env vars)', { status: 500, headers: cors });
+    return new Response('Server not configured', { status: 500, headers: cors });
   }
 
+  // Forward to Supabase REST
   const target = `${sUrl}/rest/v1/${table}${url.search}`;
   const init = {
     method: req.method,
