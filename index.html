@@ -109,76 +109,51 @@ function showErrBar(msg){ toast(msg); }
 function fmt(v){ return v==null ? '' : String(v); }
 
 /* ===================== SUPABASE (REST) ===================== */
-const REST = '/api/supa'; // same-origin, no CORS
+const SUPABASE_URL  = 'https://hsjinkyuxfgeqxervcmz.supabase.co';  
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzamlua3l1eGZnZXF4ZXJ2Y216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMzkzNjAsImV4cCI6MjA2ODkxNTM2MH0.0frju_BvUsDw4OaGFQHbqlgel4n-2aWBB-569bm-CQU'; 
 
-function toQS(obj = {}) {
-  const u = new URLSearchParams();
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === undefined || v === null || v === '') continue;
-    u.set(k, v);
+  // ===== 2) Base REST URL (direct to Supabase, no proxy) =====
+  const REST = `${SUPABASE_URL}/rest/v1`;
+
+  // ===== 3) Minimal fetch wrapper with required headers =====
+  async function restFetch(path, { method = 'GET', body, prefer } = {}) {
+    const url = `${REST}${path}`;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        apikey: SUPABASE_ANON,
+        Authorization: `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        ...(prefer ? { Prefer: prefer } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+
+    // Throw readable errors for debugging
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`[${res.status}] ${text || res.statusText}`);
+    }
+
+    // Some REST calls can return an empty body; guard for that
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : null;
   }
-  return u.toString();
-}
 
-/** Generic fetch wrapper to our proxy */
-async function restFetch(path, { method='GET', body, prefer } = {}) {
-  const url = path.startsWith('http') ? path : `${REST}/${path.replace(/^\/+/, '')}`;
-  const headers = { 'Content-Type': 'application/json' };
-  if (prefer) headers['Prefer'] = prefer;
+  // ===== 4) Convenience helpers (keep your existing usage) =====
+  // NOTE: `qs` may be "select=*,id" or start with "?"
+  const restSelect = (table, qs) =>
+    restFetch(`/${table}${qs?.startsWith('?') ? qs : qs ? `?${qs}` : ''}`);
 
-  // Debug helper in DevTools
-  console.log('[REST]', method, url);
+  const restInsert = (table, rows) =>
+    restFetch(`/${table}`, { method: 'POST', body: rows, prefer: 'return=representation' });
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
+  // Example: restUpdate('tasks', '?id=eq.123', { status: 'done' })
+  const restUpdate = (table, filterQS, patch) =>
+    restFetch(`/${table}${filterQS}`, { method: 'PATCH', body: patch, prefer: 'return=representation' });
 
-  if (!res.ok) {
-    let text = '';
-    try { text = await res.text(); } catch {}
-    throw new Error(text || `${res.status} ${res.statusText}`);
-  }
-  return res.status === 204 ? null : res.json();
-}
-
-/** Select rows */
-async function restSelect(table, { select='*', filters=null, order=null, limit=null, offset=null } = {}) {
-  const qs = new URLSearchParams({ select });
-  if (filters && typeof filters === 'object') {
-    for (const [k, v] of Object.entries(filters)) qs.set(k, v);  // e.g. {type:'eq.service'}
-  }
-  if (order) qs.set('order', order);               // e.g. 'due_date.asc'
-  if (limit != null)  qs.set('limit',  String(limit));
-  if (offset != null) qs.set('offset', String(offset));
-
-  const res = await fetch(`${REST}/${table}?${qs.toString()}`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-/** Insert, Update, Delete */
-async function restInsert(table, row) {
-  return restFetch(table, {
-    method: 'POST',
-    body: row,
-    prefer: 'return=representation'
-  });
-}
-async function restUpdate(table, id, patch) {
-  return restFetch(`${table}?id=eq.${id}`, {
-    method: 'PATCH',
-    body: patch,
-    prefer: 'return=representation'
-  });
-}
-async function restDelete(table, id) {
-  return restFetch(`${table}?id=eq.${id}`, {
-    method: 'DELETE',
-    prefer: 'return=representation'
-  });
-}
+  const restDelete = (table, filterQS) =>
+    restFetch(`/${table}${filterQS}`, { method: 'DELETE' });
 
 /* ===================== PASSGATE ===================== */
 const PASS_PLAIN = "TRIDENTHUB_portal";
@@ -267,12 +242,13 @@ function setActive(v){
 async function syncAll(){
   try{
     const [tasks, clients, sites, equips, insp] = await Promise.all([
-      restSelect("tasks"),
-      restSelect("clients"),
-      restSelect("sites"),
-      restSelect("equipments"),
-      restSelect("inspections")
+      restSelect("tasks", "select=*"),
+      restSelect("clients", "select=*"),
+      restSelect("sites", "select=*"),
+      restSelect("equipments", "select=*"),
+      restSelect("inspections", "select=*")
     ]);
+
     db.tasks = tasks || [];
     db.clients = clients || [];
     db.sites = sites || [];
@@ -458,14 +434,23 @@ async function addRow(view, payload){
   if(view==="services"||view==="callbacks"||view==="repairs"){ await restInsert("tasks", payload); }
   else { await restInsert(view, payload); }
 }
+
+function idFilter(id){
+  return `?id=eq.${encodeURIComponent(String(id))}`;
+}
+
 async function updateRow(view, id, patch){
-  if(view==="services"||view==="callbacks"||view==="repairs"){ await restUpdate("tasks", id, patch); }
-  else { await restUpdate(view, id, patch); }
+  const qs = idFilter(id);
+  if(view==="services"||view==="callbacks"||view==="repairs"){ await restUpdate("tasks", qs, patch); }
+  else { await restUpdate(view, qs, patch); }
 }
+
 async function removeRow(view, id){
-  if(view==="services"||view==="callbacks"||view==="repairs"){ await restDelete("tasks", id); }
-  else { await restDelete(view, id); }
+  const qs = idFilter(id);
+  if(view==="services"||view==="callbacks"||view==="repairs"){ await restDelete("tasks", qs); }
+  else { await restDelete(view, qs); }
 }
+
 
 /* buttons */
 $("#newBtn").addEventListener("click", ()=> openForm(currentView, null) );
