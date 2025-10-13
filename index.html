@@ -109,63 +109,32 @@ function showErrBar(msg){ toast(msg); }
 function fmt(v){ return v==null ? '' : String(v); }
 
 /* ===================== SUPABASE (REST) ===================== */
-const SUPABASE_URL = "https://hsjinkyuxfgeqxervcmz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhzamlua3l1eGZnZXF4ZXJ2Y216Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMzkzNjAsImV4cCI6MjA2ODkxNTM2MH0.0frju_BvUsDw4OaGFQHbqlgel4n-2aWBB-569bm-CQU";
+const REST = '/api/supa'; // same-origin, no CORS
 
-/* Direct REST helpers */
-const REST = `/api/supa`;
-  
-function baseHeaders() {
-  return {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json'
-  };
-}
-
-function toQS(obj) {
+function toQS(obj = {}) {
   const u = new URLSearchParams();
-  for (const [k, v] of Object.entries(obj || {})) {
+  for (const [k, v] of Object.entries(obj)) {
     if (v === undefined || v === null || v === '') continue;
     u.set(k, v);
   }
   return u.toString();
 }
 
-function buildFilters(filters = {}) {
-  const out = {};
-  for (const [col, rule] of Object.entries(filters)) {
-    if (rule && typeof rule === 'object' && 'op' in rule) out[col] = `${rule.op}.${rule.value}`;
-    else out[col] = `eq.${rule}`;
-  }
-  return out;
-}
-function buildOrIlike(columns = [], term = '') {
-  if (!term || !columns.length) return {};
-  const pats = columns.map(c => `${c}.ilike.*${term.replaceAll('%','\\%')}*`);
-  return { or: `(${pats.join(',')})` };
-}
-
-async function restFetch(path, { method = 'GET', body, prefer } = {}) {
-  const headers = { ...baseHeaders(), 'Content-Type': 'application/json' };
+/** Generic fetch wrapper to our proxy */
+async function restFetch(path, { method='GET', body, prefer } = {}) {
+  const url = path.startsWith('http') ? path : `${REST}/${path.replace(/^\/+/, '')}`;
+  const headers = { 'Content-Type': 'application/json' };
   if (prefer) headers['Prefer'] = prefer;
 
-  // Build absolute URL to Supabase REST
-  const url = path.startsWith('http')
-    ? path
-    : `${REST}/${path.replace(/^\/+/, '')}`;
-
-  // 🔎 quick debug so you can see the exact URL/method in DevTools
+  // Debug helper in DevTools
   console.log('[REST]', method, url);
 
   const res = await fetch(url, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
-    mode: 'cors'
+    body: body ? JSON.stringify(body) : undefined
   });
 
-  // If it fails, try to print the error body (if any)
   if (!res.ok) {
     let text = '';
     try { text = await res.text(); } catch {}
@@ -174,23 +143,22 @@ async function restFetch(path, { method = 'GET', body, prefer } = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-function restOrder(order) {
-  if (!order) return null;
-  const desc = order.startsWith('-');
-  const col = desc ? order.slice(1) : order;
-  return `${col}.${desc ? 'desc' : 'asc'}`;
-}
-
-// ---------- CRUD helpers your tables already use ----------
-async function restSelect(table, { select='*', limit=null, offset=null } = {}) {
+/** Select rows */
+async function restSelect(table, { select='*', filters=null, order=null, limit=null, offset=null } = {}) {
   const qs = new URLSearchParams({ select });
-  if (limit != null) qs.set('limit', String(limit));
+  if (filters && typeof filters === 'object') {
+    for (const [k, v] of Object.entries(filters)) qs.set(k, v);  // e.g. {type:'eq.service'}
+  }
+  if (order) qs.set('order', order);               // e.g. 'due_date.asc'
+  if (limit != null)  qs.set('limit',  String(limit));
   if (offset != null) qs.set('offset', String(offset));
+
   const res = await fetch(`${REST}/${table}?${qs.toString()}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
+/** Insert, Update, Delete */
 async function restInsert(table, row) {
   return restFetch(table, {
     method: 'POST',
