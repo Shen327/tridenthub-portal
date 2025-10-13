@@ -1,13 +1,11 @@
 export const config = { runtime: 'edge' };
 
-// Allow only the tables your UI needs.
 const ALLOWED = new Set(['tasks', 'clients', 'sites', 'equipments', 'inspections']);
 
-// Basic CORS headers so you can test from anywhere if needed.
-// (When your UI calls this from the same domain, the browser won't require CORS.)
 function cors(req) {
+  const allow = process.env.ALLOW_ORIGIN || req.headers.get('origin') || '*';
   return {
-    'Access-Control-Allow-Origin': req.headers.get('origin') || '*',
+    'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Headers': 'authorization, content-type, apikey, prefer',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Vary': 'Origin'
