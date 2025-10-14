@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TRIDENT HUB — Portal (REST + CRUD)</title>
+  <title>TRIDENT Portal</title>
   <style>
     :root{
       --bg:#0b1220;--bg2:#0e1626;--panel:#0f172a;--muted:#8aa0b8;--ring:#60a5fa;
@@ -218,7 +218,7 @@ const WIRED_VIEWS = new Set(["services","callbacks","repairs","clients","sites",
 function renderSidebar(){
   const sb = $("#sidebar");
   sb.innerHTML = `
-    <header>🚀 TRIDENT HUB</header>
+    <header>TRIDENT HUB</header>
     <div class="nav">
       ${NAV.map(g => `
         <div class="group">
