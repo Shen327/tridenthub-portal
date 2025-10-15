@@ -162,14 +162,22 @@ const SUPABASE_URL  = 'https://hsjinkyuxfgeqxervcmz.supabase.co';
 const PASS_PLAIN = "TRIDENTHUB_portal";
 const PASS_SALT  = "ideal-lab-trident-2025";
 const PASS_ITER  = 150000;
-// PBKDF2-SHA256(TRIDENTHUB_portal, salt, 150000) = 089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f
 const PASS_HASH  = "089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
-const ALLOW_DEV_FALLBACK = true; // allows plain-text match on file:// or if subtle crypto unavailable
+const ALLOW_DEV_FALLBACK = true;
 
 let SESSION_RUNTIME_UNLOCKED=false;
 function isUnlocked(){ return SESSION_RUNTIME_UNLOCKED; }
-function setUnlocked(){ SESSION_RUNTIME_UNLOCKED=true; $("#lock").hidden=true; $("#who").textContent="Unlocked"; }
-function lock(){ SESSION_RUNTIME_UNLOCKED=false; $("#who").textContent="Locked"; $("#lock").hidden=false; }
+function setUnlocked(){
+  SESSION_RUNTIME_UNLOCKED = true;
+  $("#lock").hidden = true;
+  const who = $("#who"); if (who) who.textContent = "Unlocked";
+}
+function lock(){
+  SESSION_RUNTIME_UNLOCKED = false;
+  const who = $("#who"); if (who) who.textContent = "Locked";
+  $("#lock").hidden = false;
+}
+
 
 async function hashPass(p,s=PASS_SALT,i=PASS_ITER){
   if(!window.crypto?.subtle) return null;
@@ -209,7 +217,6 @@ const NAV = [
       {key:"clients",label:"Clients"},
       {key:"sites",label:"Sites"},
       {key:"equipments",label:"Equipments"},
-      {key:"maintenance",label:"Maintenance"}
   ]},
   { title:"Compliance", items:[ {key:"inspections",label:"Inspections"} ] }
 ];
@@ -228,9 +235,6 @@ function renderSidebar(){
           `).join('')}
         </div>
       `).join('')}
-    </div>
-    <div class="footer" style="padding:12px 14px;border-top:1px solid rgba(255,255,255,.06)">
-      Logged in as <b id="who">${isUnlocked()?'Unlocked':'Locked'}</b>
     </div>
   `;
   $$(".item", sb).forEach(el=> el.addEventListener("click", ()=> setActive(el.dataset.view)) );
