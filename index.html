@@ -14,6 +14,7 @@
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--fg);
          font:14px/1.45 system-ui,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif}
     .app{display:flex;height:100%}
+    /* Sidebar */
     .sidebar{width:260px;min-width:240px;background:rgba(16,24,40,.90);backdrop-filter: blur(8px);
              border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column}
     .sidebar header{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:700}
@@ -23,6 +24,7 @@
     .item{display:flex;gap:10px;align-items:center;padding:9px 10px;margin:4px 6px;border-radius:10px;cursor:pointer}
     .item:hover{background:rgba(255,255,255,.06)}
     .item.active{background:rgba(37,99,235,.18);outline:1px solid rgba(37,99,235,.35)}
+    /* Main */
     .main{flex:1;display:flex;flex-direction:column;min-width:0}
     .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid rgba(255,255,255,.06)}
     .search{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;min-width:280px}
@@ -48,11 +50,35 @@
     input,select,textarea{width:100%;background:#0b1220;border:1px solid #3a4a61;color:var(--fg);padding:8px;border-radius:10px}
     input:focus,select:focus,textarea:focus{outline:2px solid var(--ring);box-shadow:0 0 0 3px rgba(96,165,250,.25);border-color:#60a5fa}
     .toast{position:fixed;right:16px;bottom:14px;background:#0b1220;border:1px solid #475569;border-radius:12px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.35);z-index:60}
+    /* Lock card */
     #lock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#0b1220;border:1px solid #475569;border-radius:16px;padding:18px;width:min(520px,92vw);z-index:50}
     #lock h3{margin:0 0 10px}
     #lock .row{display:flex;gap:8px}
     #error{display:none;background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.35);padding:8px 10px;border-radius:10px;margin:8px 0}
     @media (max-width: 880px){ .sidebar{position:fixed;transform:translateX(-100%);z-index:70;transition:.25s} .sidebar.show{transform:translateX(0)} }
+
+    /* ===== Detail dialog: higher contrast & clarity ===== */
+    :root{
+      --dlg-bg:#0a0f1a; --dlg-fg:#e8eef6; --dlg-muted:#a9bed3; --dlg-key:#9cc3ff; --dlg-edge:#4b5b70; --dlg-row:#101828;
+    }
+    dialog.details{ color:var(--dlg-fg); background:var(--dlg-bg); border:1px solid var(--dlg-edge); border-radius:16px; padding:0; }
+    dialog.details::backdrop{ background:rgba(0,0,0,.70); }
+    dialog.details form{ max-height:82vh; overflow:auto; padding:16px; }
+    dialog.details h3{ color:#fafdff; letter-spacing:.2px; }
+    dialog.details h4{ color:#f4f7fb; margin:14px 0 10px; }
+    .kv{ display:grid; grid-template-columns:220px 1fr; gap:10px 18px; padding:14px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-radius:12px; }
+    .kv .k{ color:var(--dlg-key); font-weight:700; font-size:13px; }
+    .kv .v{ color:var(--dlg-fg); font-weight:550; font-size:14px; word-break:break-word; }
+    dialog.details table{ width:100%; border-collapse:collapse; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.10); border-radius:12px; overflow:hidden; font-size:13px; }
+    dialog.details th{ color:#d7e2ee; background:rgba(255,255,255,.06); text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
+    dialog.details td, dialog.details th{ border-bottom:1px solid rgba(255,255,255,.09); padding:9px 11px; }
+    dialog.details tbody tr:nth-child(even) td{ background:rgba(255,255,255,.02); }
+    dialog.details tbody tr:hover td{ background:var(--dlg-row); }
+    dialog.details .muted{ color:var(--dlg-muted); }
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800; line-height:1.5; }
+    .badge.ok{ color:#4ade80; background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.45); }
+    .badge.dang{ color:#f87171; background:rgba(239,68,68,.14); border:1px solid rgba(239,68,68,.45); }
+    .badge.warn{ color:#fbbf24; background:rgba(251,191,36,.14); border:1px solid rgba(251,191,36,.45); }
   </style>
 </head>
 <body>
@@ -67,6 +93,8 @@
       </div>
       <div class="actions">
         <button class="btn secondary" id="exportCsv">Export CSV</button>
+        <button class="btn secondary" id="importCsv">Import CSV</button>
+        <input id="csvFile" type="file" accept=".csv,text/csv" style="display:none" />
         <button class="btn" id="newBtn">+ New</button>
       </div>
     </div>
@@ -86,8 +114,10 @@
   </main>
 </div>
 
+<!-- Toast -->
 <div id="toast" class="toast" style="display:none"></div>
 
+<!-- Lock / passgate -->
 <div id="lock">
   <h3>Enter Passcode</h3>
   <div id="error">Incorrect passcode. Try again.</div>
@@ -98,9 +128,7 @@
 </div>
 
 <script>
-/* =========================================================
-   BASIC UTILS
-========================================================= */
+/* ===================== BASIC UTILS ===================== */
 const $ = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 const fmt = v => v==null ? '' : String(v);
@@ -108,9 +136,7 @@ function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='bl
 function parseTS(x){ try{ return x? new Date(x): null }catch{ return null } }
 function minutesDiff(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000) }
 
-/* =========================================================
-   SUPABASE REST CONFIG  (CHANGE THESE TWO)
-========================================================= */
+/* ===================== SUPABASE (REST) ===================== */
 const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eGNydHh3cmh4eW1seWJ4bGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDU4NzgsImV4cCI6MjA3NzEyMTg3OH0.ehMiF9uPgpW_eST549RvvlK2KrpPm9NJ1qhtz3tErqc';
 
@@ -138,9 +164,7 @@ const restInsert = (table, rows) => restFetch(`/${table}`, { method:'POST', body
 const restUpdate = (table, filterQS, patch) => restFetch(`/${table}${filterQS}`, { method:'PATCH', body: patch, prefer:'return=representation' });
 const restDelete = (table, filterQS) => restFetch(`/${table}${filterQS}`, { method:'DELETE' });
 
-/* =========================================================
-   PASSGATE (same as before)
-========================================================= */
+/* ===================== PASSGATE ===================== */
 const PASS_PLAIN="TRIDENTHUB_portal", PASS_SALT="ideal-lab-trident-2025", PASS_ITER=150000;
 const PASS_HASH="089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
 let UNLOCKED=false;
@@ -159,29 +183,21 @@ $("#unlock").addEventListener("click", async ()=>{
   } else { $("#error").style.display="block"; }
 });
 
-/* =========================================================
-   DATA + NAV + COLUMNS PER TABLE
-========================================================= */
+/* ===================== NAV / COLUMNS / SCHEMAS ===================== */
 let currentView = "services";
 
-/** We’ll show a *sane subset* of columns so the table stays readable. */
 const COLUMNS = {
   services:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   callbacks:  ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   repairs:    ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   inspection_cf:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   inspection_14th: ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-
   attendance: ["id","user_id","user_name","check_in_at","check_out_at","location_name"],
-
   checkins:   ["id","user_id","latitude","longitude","photo_path","created_at"],
-
   reports:    ["id","task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-
   equipments: ["id","type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"]
 };
 
-/** Forms: small set of editable fields (safe to post) */
 const SCHEMAS = {
   task: [
     {key:'title',label:'Title',required:true},
@@ -230,7 +246,6 @@ const SCHEMAS = {
 const NAV = [
   { title:"Sales", items:[ {key:"new_contract", label:"New Contract"} ]},
   { title:"Project", items:[ {key:"new_project",  label:"New Installation"} ]},
-
   { title:"Service Ops", items:[
     {key:"services",   label:"Services"},
     {key:"callbacks",  label:"Call Back"},
@@ -239,26 +254,16 @@ const NAV = [
     {key:"sites",      label:"Sites"},
     {key:"equipments", label:"Equipments"}
   ]},
-
   { title:"Compliance", items:[
-    {key:"inspection_cf",     label:"CF Renewal Inspection"},
-    {key:"inspection_14th",   label:"14th Schedule Inspection"}
+    {key:"inspection_cf",   label:"CF Renewal Inspection"},
+    {key:"inspection_14th", label:"14th Schedule Inspection"}
   ]}
 ];
 
-
 /* Runtime store */
-const store = {
-  tasks: [],
-  attendance: [],
-  checkins: [],
-  reports: [],
-  equipments: []
-};
+const store = { tasks:[], attendance:[], checkins:[], reports:[], equipments:[] };
 
-/* =========================================================
-   SIDEBAR + NAV
-========================================================= */
+/* ===================== SIDEBAR ===================== */
 function renderSidebar(){
   const sb = $("#sidebar");
   sb.innerHTML = `
@@ -272,54 +277,55 @@ function renderSidebar(){
           `).join('')}
         </div>
       `).join('')}
-    </div>
-  `;
+    </div>`;
   $$(".item", sb).forEach(el=> el.addEventListener("click", ()=> setActive(el.dataset.view)) );
 }
 function setActive(v){ currentView=v; renderSidebar(); render(); }
 
-/* =========================================================
-   FETCH (reads only your real tables)
-========================================================= */
+/* ===================== FETCH ===================== */
 async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
-  const [
-    tasks, attendance, checkins, reports, equipments
-  ] = await Promise.all([
+  const [tasks, attendance, checkins, reports, equipments] = await Promise.all([
     safe(restSelect("tasks", "select=*")),
     safe(restSelect("attendance", "select=*")),
     safe(restSelect("checkins", "select=*")),
     safe(restSelect("reports", "select=*")),
     safe(restSelect("equipments", "select=*"))
   ]);
-  store.tasks = tasks;
-  store.attendance = attendance;
-  store.checkins = checkins;
-  store.reports = reports;
-  store.equipments = equipments;
+  store.tasks=tasks; store.attendance=attendance; store.checkins=checkins; store.reports=reports; store.equipments=equipments;
   render();
 }
 
-/* =========================================================
-   RENDER
-========================================================= */
-const normalize = s => (s||"").toLowerCase().replace(/[\s\-_]+/g,"");
+/* ===================== FILTER HELPERS (Inspections) ===================== */
+const norm = (s)=> (s||"").toLowerCase();
+function isInspection(t){ return norm(t.type)==="inspection"; }
+function isCfRenewal(t){
+  const text = [t.title,t.description,t.task_remark,t.remark].map(norm).join(" ");
+  return /(^|\b)cf\b|certificate of fitness|cf renewal/.test(text);
+}
+function is14thSchedule(t){
+  const text = [t.title,t.description,t.task_remark,t.remark].map(norm).join(" ");
+  return /14(th)?\s*schedule/.test(text);
+}
 
+/* ===================== RENDER ===================== */
 function rowsFor(view){
-  if(["services","callbacks","repairs","inspections"].includes(view)){
-    const typ = view==="services"?"service":view==="callbacks"?"callback":view==="repairs"?"repair":"inspection";
-    return (store.tasks||[]).filter(t => normalize(t.type)===typ);
+  if (["services","callbacks","repairs"].includes(view)){
+    const typ = view==="services"?"service":view==="callbacks"?"callback":"repair";
+    return (store.tasks||[]).filter(t => norm(t.type)===typ);
   }
-  if(view==="attendance"){
+  if (view==="inspection_cf")   return (store.tasks||[]).filter(t => isInspection(t) && isCfRenewal(t));
+  if (view==="inspection_14th") return (store.tasks||[]).filter(t => isInspection(t) && is14thSchedule(t));
+
+  if (view==="attendance"){
     return (store.attendance||[]).map(a=>{
       const ci=parseTS(a.check_in_at), co=parseTS(a.check_out_at);
       return {...a, duration_min: minutesDiff(ci,co) };
     });
   }
-  if(view==="checkins") return store.checkins||[];
-  if(view==="reports")  return store.reports||[];
-  if(view==="equipments"){
-    // Ensure an ID-like key for table row (prefer id, else pma)
+  if (view==="checkins")  return store.checkins||[];
+  if (view==="reports")   return store.reports||[];
+  if (view==="equipments"){
     return (store.equipments||[]).map(e => ({ id: e.id ?? e.pma_no ?? e.type, ...e }));
   }
   return [];
@@ -334,7 +340,7 @@ function render(){
   $("#count").textContent = rows?.length || 0;
 
   const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
-  const tbody = '<tbody>'+ (rows||[]).map(r=>{
+  const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
     const id = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
     const tds = cols.map(c=>`<td>${fmt(r[c])}</td>`).join('');
     return `<tr data-id="${id}">
@@ -348,16 +354,26 @@ function render(){
     </tr>`;
   }).join('') +'</tbody>';
 
-  $("#viewHost").innerHTML = `<table>${thead}${tbody}</table>`;
+  $("#viewHost").innerHTML = `<table>${thead}${tbodyHtml}</table>`;
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
   $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
+
+  // row click for equipments -> open detail dialog
+  const tbodyEl = $("#viewHost table tbody");
+  if (tbodyEl && currentView === "equipments") {
+    tbodyEl.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const tr = e.target.closest("tr[data-id]");
+      if (!tr) return;
+      const id = tr.dataset.id;
+      if (id) showEquipmentDetails(id);
+    });
+  }
 }
 
-/* =========================================================
-   FORMS / CRUD
-========================================================= */
+/* ===================== FORMS / CRUD ===================== */
 function fieldsFor(view){
-  if(["services","callbacks","repairs","inspections"].includes(view)) return SCHEMAS.task;
+  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) return SCHEMAS.task;
   return SCHEMAS[view] || [];
 }
 function fieldHTML(f, val=""){
@@ -377,11 +393,16 @@ function collectFrom(dlg, view){
 }
 
 function openForm(view, id){
-  const isTask = ["services","callbacks","repairs","inspections"].includes(view);
-  const fixedType = isTask ? (view==="services"?"service":view==="callbacks"?"callback":view==="repairs"?"repair":view==="inspections"?"inspection":null) : null;
+  const isTaskPage = ["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view);
+  const fixedType =
+    view === "services"        ? "service"    :
+    view === "callbacks"       ? "callback"   :
+    view === "repairs"         ? "repair"     :
+    view === "inspection_cf"   ? "inspection" :
+    view === "inspection_14th" ? "inspection" : null;
 
   const source =
-    isTask ? store.tasks :
+    isTaskPage ? store.tasks :
     view==="attendance" ? store.attendance :
     view==="checkins"   ? store.checkins   :
     view==="reports"    ? store.reports    :
@@ -412,7 +433,7 @@ function openForm(view, id){
     e.preventDefault();
     const payload = collectFrom(dlg, view); if(!payload) return;
     try{
-      if(isTask && fixedType) payload.type = fixedType;
+      if(isTaskPage && fixedType) payload.type = fixedType;
       if(id) await updateRow(view, id, payload);
       else   await addRow(view, payload);
       await syncAll(); dlg.close();
@@ -428,23 +449,92 @@ function openForm(view, id){
 function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
 
 async function addRow(view, payload){
-  if(["services","callbacks","repairs","inspections"].includes(view)) await restInsert("tasks", payload);
-  else await restInsert(view, payload); 
+  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restInsert("tasks", payload);
+  else await restInsert(view, payload);
 }
 async function updateRow(view, id, patch){
   const qs = idFilter(id);
-  if(["services","callbacks","repairs","inspections"].includes(view)) await restUpdate("tasks", qs, patch);
+  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restUpdate("tasks", qs, patch);
   else await restUpdate(view, qs, patch);
 }
 async function removeRow(view, id){
   const qs = idFilter(id);
-  if(["services","callbacks","repairs","inspections"].includes(view)) await restDelete("tasks", qs);
+  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restDelete("tasks", qs);
   else await restDelete(view, qs);
 }
 
-/* =========================================================
-   BUTTONS
-========================================================= */
+/* ===================== CSV IMPORT ===================== */
+function parseCSV(text){
+  const out=[]; let row=[], field='', i=0, q=false;
+  while(i<=text.length){
+    const c = text[i] ?? '\n';
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else q=false; }
+      else field+=c;
+    }else{
+      if(c === '"') q=true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* ignore */ }
+      else if(c === '\n'){ row.push(field); out.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+    i++;
+  }
+  while(out.length && out[out.length-1].length===1 && out[out.length-1][0]==='') out.pop();
+  return out;
+}
+function viewToTable(view){
+  if (["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) return "tasks";
+  return view;
+}
+function normalizeKey(s){ return String(s||'').trim().toLowerCase().replace(/[\s\-]+/g,'_'); }
+function allowedKeysFor(view){ return new Set((fieldsFor(view)||[]).map(f=>f.key).concat(["id"])); }
+function rowsToPayloads(view, header, rows){
+  const allowed = allowedKeysFor(view);
+  const keys = header.map(normalizeKey);
+  const out=[];
+  for(const r of rows){
+    const o={};
+    for(let i=0;i<keys.length;i++){
+      const k=keys[i]; if(!k || !allowed.has(k)) continue;
+      const v=r[i] ?? '';
+      o[k]= v===''?null:v;
+    }
+    if(Object.keys(o).length) out.push(o);
+  }
+  return out;
+}
+async function importCsvForCurrentView(file){
+  const table = viewToTable(currentView);
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if(!rows.length){ toast("CSV: no rows"); return; }
+  const header = rows[0];
+  const payloads = rowsToPayloads(currentView, header, rows.slice(1));
+  if(!payloads.length){ toast("CSV: no valid data columns"); return; }
+
+  const hasId = header.map(normalizeKey).includes('id');
+  const onConflict = hasId ? "?on_conflict=id" : "";
+  const prefer = hasId ? "return=representation,resolution=merge-duplicates" : "return=representation";
+
+  const CHUNK=500; let done=0;
+  for(let i=0;i<payloads.length;i+=CHUNK){
+    const batch=payloads.slice(i,i+CHUNK);
+    await restFetch(`/${table}${onConflict}`, { method:'POST', body:batch, prefer });
+    done+=batch.length;
+  }
+  toast(`Imported ${done} row(s) into ${table}${hasId?' (upsert)':''}.`);
+  await syncAll();
+}
+$("#importCsv").addEventListener("click", ()=>{
+  if(!UNLOCKED){ toast("Unlock first"); return; }
+  $("#csvFile").value=""; $("#csvFile").click();
+});
+$("#csvFile").addEventListener("change",(e)=>{
+  const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
+});
+
+/* ===================== EXPORT + NEW ===================== */
 $("#newBtn").addEventListener("click", ()=> openForm(currentView, null) );
 $("#exportCsv").addEventListener("click", ()=>{
   const table = $("#viewHost table"); if(!table){ toast("Nothing to export"); return; }
@@ -458,9 +548,104 @@ $("#exportCsv").addEventListener("click", ()=>{
   a.href = URL.createObjectURL(blob); a.download = `${currentView}.csv`; a.click(); URL.revokeObjectURL(a.href);
 });
 
-/* =========================================================
-   INIT
-========================================================= */
+/* ===================== EQUIPMENT DETAILS DIALOG ===================== */
+const EQUIPMENT_DETAIL_FIELDS = [
+  "id","type","pma_no","name","location",
+  "brand","model_name",
+  "capacity_kg","capacity_persons","capacity_persons_per_hour",
+  "speed_m/m","rise_m","stops_openings",
+  "stepwidth_mm","inclination","machine_type","motor_data","controller","software_version",
+  "operation","roping","rope_diameter","rope_construction",
+  "pma_status","pma_expiry","contract_status","contract_expiry",
+  "created_at","updated_at"
+];
+const fDate = (v) => v ? new Date(v).toISOString().slice(0,10) : "";
+const daysLeft = (v) => {
+  if (!v) return null;
+  const d = (new Date(v) - new Date()) / 86400000;
+  return Math.round(d);
+};
+function kvGrid(obj, keys) {
+  return `
+    <div style="display:grid;grid-template-columns: 220px 1fr; gap:10px;">
+      ${keys.map(k => {
+        let val = obj?.[k];
+        if (k.endsWith("_expiry") || k.endsWith("_at")) val = fDate(val);
+        let badge = "";
+        if (k.endsWith("_expiry")) {
+          const d = daysLeft(obj?.[k]);
+          if (typeof d === "number") {
+            const color = d < 0 ? "var(--danger)" : (d <= 30 ? "rgb(234,179,8)" : "var(--ok)");
+            const text  = d < 0 ? `${Math.abs(d)} day(s) overdue` : (d === 0 ? "expires today" : `${d} day(s) left`);
+            badge = `<span style="margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid ${color};color:${color};font-size:12px">${text}</span>`;
+          }
+        }
+        return `
+          <div class="muted" style="word-break:break-word">${k}</div>
+          <div style="word-break:break-word">${fmt(val)}${badge}</div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+function miniTable(headers, rows) {
+  if (!rows?.length) return `<div class="muted">No records.</div>`;
+  return `
+    <div style="overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr>${headers.map(h=>`<th style="padding:8px 10px;font-size:12px;color:var(--fg2);border-bottom:1px solid rgba(255,255,255,.06)">${h}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>${headers.map(h=>`<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)">${fmt(r[h])}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+async function showEquipmentDetails(equipId){
+  const dlg = document.createElement("dialog");
+  dlg.className = "details";
+  dlg.innerHTML = `
+    <form method="dialog" style="min-width:min(980px,96vw)">
+      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0">Equipment details</h3>
+        <button class="btn secondary" value="close">Close</button>
+      </header>
+      <div id="equipBody"><div class="muted">Loading…</div></div>
+    </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  try {
+    const [eq] = await restSelect("equipments", `?id=eq.${encodeURIComponent(equipId)}&select=*`);
+    if (!eq) { $("#equipBody", dlg).innerHTML = `<div class="muted">Equipment not found.</div>`; return; }
+    const pma = eq.pma_no ?? eq.pma ?? null;
+
+    const tasks   = pma ? await restSelect("tasks",   `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
+    const reports = pma ? await restSelect("reports", `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
+
+    const taskHeaders    = ["id","title","type","status","priority","assigned_to","due_date","updated_at","created_at","completed_at"];
+    const reportHeaders  = ["id","title","remark","created_at","check_in_at","check_out_at"];
+
+    $("#equipBody", dlg).innerHTML = `
+      <section style="margin-bottom:16px">
+        <h4 style="margin:0 0 10px">Overview</h4>
+        ${kvGrid(eq, EQUIPMENT_DETAIL_FIELDS)}
+      </section>
+      <section style="margin-bottom:16px">
+        <h4 style="margin:0 0 10px">Recent Tasks (equipment_pma = ${fmt(pma)})</h4>
+        ${miniTable(taskHeaders, tasks)}
+      </section>
+      <section>
+        <h4 style="margin:0 0 10px">Recent Reports (equipment_pma = ${fmt(pma)})</h4>
+        ${miniTable(reportHeaders, reports)}
+      </section>
+    `;
+  } catch (err) {
+    $("#equipBody", dlg).innerHTML = `<div class="muted">Error: ${fmt(err.message)}</div>`;
+  }
+}
+
+/* ===================== INIT ===================== */
 renderSidebar();
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
