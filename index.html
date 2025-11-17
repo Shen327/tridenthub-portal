@@ -14,7 +14,6 @@
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--fg);
          font:14px/1.45 system-ui,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif}
     .app{display:flex;height:100%}
-    /* Sidebar */
     .sidebar{width:260px;min-width:240px;background:rgba(16,24,40,.90);backdrop-filter: blur(8px);
              border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column}
     .sidebar header{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:700}
@@ -24,7 +23,6 @@
     .item{display:flex;gap:10px;align-items:center;padding:9px 10px;margin:4px 6px;border-radius:10px;cursor:pointer}
     .item:hover{background:rgba(255,255,255,.06)}
     .item.active{background:rgba(37,99,235,.18);outline:1px solid rgba(37,99,235,.35)}
-    /* Main */
     .main{flex:1;display:flex;flex-direction:column;min-width:0}
     .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid rgba(255,255,255,.06)}
     .search{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;min-width:280px}
@@ -36,13 +34,13 @@
     .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(59,130,246,.55);border-radius:12px;background:linear-gradient(#2b65f6,#1d4ed8);color:#fff;font-weight:700}
     .btn.secondary{background:rgba(255,255,255,.06);border-color:#475569;color:#e5e7eb}
     .btn.danger{background:#b91c1c;border-color:#b91c1c}
-    table{width:100%;border-collapse:collapse}
-    td.actions { width:1%; min-width:170px; white-space:nowrap; }
-    td.actions .lr {display:flex; justify-content:space-between; align-items:center; gap:.5rem; min-width:170px}
     .btn.sm { padding:.38rem .6rem; border-radius:10px; font-weight:600; }
+    table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top}
     th{font-size:12px;color:var(--fg2)}
     tr:hover td{background:rgba(255,255,255,.03)}
+    td.actions { width:1%; min-width:170px; white-space:nowrap; }
+    td.actions .lr {display:flex; justify-content:space-between; align-items:center; gap:.5rem; min-width:170px}
     .muted{color:var(--muted)}
     dialog{background:rgba(16,24,40,.98);border:1px solid rgba(255,255,255,.1);border-radius:16px}
     dialog form{padding:16px}
@@ -50,7 +48,6 @@
     input,select,textarea{width:100%;background:#0b1220;border:1px solid #3a4a61;color:var(--fg);padding:8px;border-radius:10px}
     input:focus,select:focus,textarea:focus{outline:2px solid var(--ring);box-shadow:0 0 0 3px rgba(96,165,250,.25);border-color:#60a5fa}
     .toast{position:fixed;right:16px;bottom:14px;background:#0b1220;border:1px solid #475569;border-radius:12px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.35);z-index:60}
-    /* Lock card */
     #lock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#0b1220;border:1px solid #475569;border-radius:16px;padding:18px;width:min(520px,92vw);z-index:50}
     #lock h3{margin:0 0 10px}
     #lock .row{display:flex;gap:8px}
@@ -89,10 +86,8 @@
   </main>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast" style="display:none"></div>
 
-<!-- Lock / passgate -->
 <div id="lock">
   <h3>Enter Passcode</h3>
   <div id="error">Incorrect passcode. Try again.</div>
@@ -103,23 +98,25 @@
 </div>
 
 <script>
-/* ===================== BASIC UTILS ===================== */
+/* =========================================================
+   BASIC UTILS
+========================================================= */
 const $ = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+const fmt = v => v==null ? '' : String(v);
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='block'; setTimeout(()=>{t.style.display='none';}, 2600); }
-function showErrBar(msg){ toast(msg); }
-function fmt(v){ return v==null ? '' : String(v); }
+function parseTS(x){ try{ return x? new Date(x): null }catch{ return null } }
+function minutesDiff(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000) }
 
-/* ===================== SUPABASE (REST) ===================== */
-/** IMPORTANT: Set both to the SAME project (Settings → API) **/
-const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';   // <- your project URL
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eGNydHh3cmh4eW1seWJ4bGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDU4NzgsImV4cCI6MjA3NzEyMTg3OH0.ehMiF9uPgpW_eST549RvvlK2KrpPm9NJ1qhtz3tErqc';                    // <- anon key from same project
+/* =========================================================
+   SUPABASE REST CONFIG  (CHANGE THESE TWO)
+========================================================= */
+const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eGNydHh3cmh4eW1seWJ4bGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDU4NzgsImV4cCI6MjA3NzEyMTg3OH0.ehMiF9uPgpW_eST549RvvlK2KrpPm9NJ1qhtz3tErqc';
 
 const REST = `${SUPABASE_URL}/rest/v1`;
-
-async function restFetch(path, { method = 'GET', body, prefer } = {}) {
-  const url = `${REST}${path}`;
-  const res = await fetch(url, {
+async function restFetch(path, { method='GET', body, prefer } = {}) {
+  const res = await fetch(`${REST}${path}`, {
     method,
     headers: {
       apikey: SUPABASE_ANON,
@@ -129,91 +126,139 @@ async function restFetch(path, { method = 'GET', body, prefer } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
+  if(!res.ok){
+    const text = await res.text().catch(()=> '');
     throw new Error(`[${res.status}] ${text || res.statusText}`);
   }
   const ct = res.headers.get('content-type') || '';
   return ct.includes('application/json') ? res.json() : null;
 }
+const restSelect = (table, qs) => restFetch(`/${table}${qs?.startsWith('?')?qs:(qs?`?${qs}`:'')}`);
+const restInsert = (table, rows) => restFetch(`/${table}`, { method:'POST', body: rows, prefer:'return=representation' });
+const restUpdate = (table, filterQS, patch) => restFetch(`/${table}${filterQS}`, { method:'PATCH', body: patch, prefer:'return=representation' });
+const restDelete = (table, filterQS) => restFetch(`/${table}${filterQS}`, { method:'DELETE' });
 
-const restSelect = (table, qs) =>
-  restFetch(`/${table}${qs?.startsWith('?') ? qs : qs ? `?${qs}` : ''}`);
-
-const restInsert = (table, rows) =>
-  restFetch(`/${table}`, { method: 'POST', body: rows, prefer: 'return=representation' });
-
-const restUpdate = (table, filterQS, patch) =>
-  restFetch(`/${table}${filterQS}`, { method: 'PATCH', body: patch, prefer: 'return=representation' });
-
-const restDelete = (table, filterQS) =>
-  restFetch(`/${table}${filterQS}`, { method: 'DELETE' });
-
-/* ===================== PASSGATE ===================== */
-const PASS_PLAIN = "TRIDENTHUB_portal";
-const PASS_SALT  = "ideal-lab-trident-2025";
-const PASS_ITER  = 150000;
-const PASS_HASH  = "089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
-const ALLOW_DEV_FALLBACK = true;
-
-let SESSION_RUNTIME_UNLOCKED=false;
-function isUnlocked(){ return SESSION_RUNTIME_UNLOCKED; }
-function setUnlocked(){
-  SESSION_RUNTIME_UNLOCKED = true;
-  $("#lock").hidden = true;
-  const who = $("#who"); if (who) who.textContent = "Unlocked";
-}
-function lock(){
-  SESSION_RUNTIME_UNLOCKED = false;
-  const who = $("#who"); if (who) who.textContent = "Locked";
-  $("#lock").hidden = false;
-}
-
+/* =========================================================
+   PASSGATE (same as before)
+========================================================= */
+const PASS_PLAIN="TRIDENTHUB_portal", PASS_SALT="ideal-lab-trident-2025", PASS_ITER=150000;
+const PASS_HASH="089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
+let UNLOCKED=false;
 async function hashPass(p,s=PASS_SALT,i=PASS_ITER){
-  if(!window.crypto?.subtle) return null;
+  if(!crypto?.subtle) return null;
   const enc=new TextEncoder();
   const key=await crypto.subtle.importKey("raw",enc.encode(p),"PBKDF2",false,["deriveBits"]);
   const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:enc.encode(s),iterations:i},key,256);
   return Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join("");
 }
-
 $("#unlock").addEventListener("click", async ()=>{
-  const pw = $("#lockpw").value || "";
   $("#error").style.display="none";
-  try{
-    const digest = await hashPass(pw);
-    if( (digest && digest===PASS_HASH) || (!digest && ALLOW_DEV_FALLBACK && pw===PASS_PLAIN) ){
-      setUnlocked();
-      renderSidebar();
-      await syncAll();
-      return;
-    }
-  }catch(e){ /* ignore */ }
-  $("#error").style.display="block";
+  const dig = await hashPass($("#lockpw").value || "");
+  if( (dig && dig===PASS_HASH) || (!dig && $("#lockpw").value===PASS_PLAIN) ){
+    UNLOCKED=true; $("#lock").hidden=true; renderSidebar(); await syncAll();
+  } else { $("#error").style.display="block"; }
 });
 
-/* ===================== DATA + NAV + VIEWS ===================== */
+/* =========================================================
+   DATA + NAV + COLUMNS PER TABLE
+========================================================= */
 let currentView = "services";
-const db={ tasks:[], clients:[], sites:[], equipments:[], inspections:[] };
 
-/* Sidebar model */
+/** We’ll show a *sane subset* of columns so the table stays readable. */
+const COLUMNS = {
+  services:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  callbacks:  ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  repairs:    ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  inspection_cf:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  inspection_14th: ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+
+  attendance: ["id","user_id","user_name","check_in_at","check_out_at","location_name"],
+
+  checkins:   ["id","user_id","latitude","longitude","photo_path","created_at"],
+
+  reports:    ["id","task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
+
+  equipments: ["id","type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"]
+};
+
+/** Forms: small set of editable fields (safe to post) */
+const SCHEMAS = {
+  task: [
+    {key:'title',label:'Title',required:true},
+    {key:'type',label:'Type (service/callback/repair/inspection)'},
+    {key:'status',label:'Status (open/in_progress/closed)'},
+    {key:'priority',label:'Priority (low/normal/high/urgent)'},
+    {key:'assigned_to',label:'Assigned to'},
+    {key:'location',label:'Location'},
+    {key:'equipment_pma',label:'Equipment PMA'},
+    {key:'due_date',label:'Due date (YYYY-MM-DD)'},
+    {key:'checked_in_at',label:'Checked in at (ISO)'},
+    {key:'checked_out_at',label:'Checked out at (ISO)'},
+    {key:'remark',label:'Remark'},
+    {key:'description',label:'Description',type:'textarea'}
+  ],
+  attendance: [
+    {key:'user_id',label:'User id'},
+    {key:'user_name',label:'User name'},
+    {key:'check_in_at',label:'Check in at (ISO)'},
+    {key:'check_out_at',label:'Check out at (ISO)'},
+    {key:'location_name',label:'Location name'}
+  ],
+  reports: [
+    {key:'task_id',label:'Task id'},
+    {key:'title',label:'Title'},
+    {key:'description',label:'Description',type:'textarea'},
+    {key:'location',label:'Location'},
+    {key:'equipment_pma',label:'Equipment PMA'},
+    {key:'remark',label:'Remark'},
+    {key:'check_in_at',label:'Check in at (ISO)'},
+    {key:'check_out_at',label:'Check out at (ISO)'}
+  ],
+  equipments: [
+    {key:'type',label:'Type'},
+    {key:'pma_no',label:'PMA'},
+    {key:'location',label:'Location'},
+    {key:'brand',label:'Brand'},
+    {key:'model_name',label:'Model name'},
+    {key:'pma_status',label:'PMA status'},
+    {key:'pma_expiry',label:'PMA expiry (date)'},
+    {key:'contract_status',label:'Contract status'},
+    {key:'contract_expiry',label:'Contract expiry (date)'}
+  ]
+};
+
 const NAV = [
-  { title:"Sales", items:[ {key:"new_contracts",label:"New Contract"} ] },
-  { title:"Project", items:[ {key:"new_installation",label:"New Installation"} ] },
-  { title:"Service Ops", items:[
-      {key:"services",label:"Services"},
-      {key:"callbacks",label:"Call Back"},
-      {key:"repairs",label:"Repair"},
-      {key:"clients",label:"Clients"},
-      {key:"sites",label:"Sites"},
-      {key:"equipments",label:"Equipments"},
-      {key:"inspections",label:"Inspections"}
-  ]},
-  { title:"Compliance", items:[ ] }
-];
-const WIRED_VIEWS = new Set(["services","callbacks","repairs","clients","sites","equipments","inspections"]);
+  { title:"Sales", items:[ {key:"new_contract", label:"New Contract"} ]},
+  { title:"Project", items:[ {key:"new_project",  label:"New Installation"} ]},
 
+  { title:"Service Ops", items:[
+    {key:"services",   label:"Services"},
+    {key:"callbacks",  label:"Call Back"},
+    {key:"repairs",    label:"Repair"},
+    {key:"clients",    label:"Clients"},
+    {key:"sites",      label:"Sites"},
+    {key:"equipments", label:"Equipments"}
+  ]},
+
+  { title:"Compliance", items:[
+    {key:"inspection_cf",     label:"CF Renewal Inspection"},
+    {key:"inspection_14th",   label:"14th Schedule Inspection"}
+  ]}
+];
+
+
+/* Runtime store */
+const store = {
+  tasks: [],
+  attendance: [],
+  checkins: [],
+  reports: [],
+  equipments: []
+};
+
+/* =========================================================
+   SIDEBAR + NAV
+========================================================= */
 function renderSidebar(){
   const sb = $("#sidebar");
   sb.innerHTML = `
@@ -231,91 +276,68 @@ function renderSidebar(){
   `;
   $$(".item", sb).forEach(el=> el.addEventListener("click", ()=> setActive(el.dataset.view)) );
 }
+function setActive(v){ currentView=v; renderSidebar(); render(); }
 
-function setActive(v){
-  currentView=v;
-  renderSidebar();   // refresh active highlight
-  render();          // refresh main panel
-}
-
-/* ---- Load data (robust, independent) ---- */
+/* =========================================================
+   FETCH (reads only your real tables)
+========================================================= */
 async function syncAll(){
-  const safe = (p, name) =>
-    p.then(x => x || [])
-     .catch(err => { console.warn(`Fetch ${name} failed:`, err); return []; });
-
-  const results = await Promise.all([
-    safe(restSelect("tasks", "select=*"), "tasks"),
-    safe(restSelect("clients", "select=*"), "clients"),
-    safe(restSelect("sites", "select=*"), "sites"),
-    safe(restSelect("equipments", "select=*"), "equipments"),
-    safe(restSelect("inspections", "select=*"), "inspections") // kept in case you later separate
+  const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
+  const [
+    tasks, attendance, checkins, reports, equipments
+  ] = await Promise.all([
+    safe(restSelect("tasks", "select=*")),
+    safe(restSelect("attendance", "select=*")),
+    safe(restSelect("checkins", "select=*")),
+    safe(restSelect("reports", "select=*")),
+    safe(restSelect("equipments", "select=*"))
   ]);
-
-  [db.tasks, db.clients, db.sites, db.equipments, db.inspections] = results;
+  store.tasks = tasks;
+  store.attendance = attendance;
+  store.checkins = checkins;
+  store.reports = reports;
+  store.equipments = equipments;
   render();
 }
 
-/* ---- Table view renderer ---- */
-const normalizeType = s => (s||"").toLowerCase().replace(/[\s\-_]+/g, "");
-const TYPE_ALIASES = {
-  service:     new Set(["service","services","svc"]),
-  callback:    new Set(["callback","callbacks","cb"]),
-  repair:      new Set(["repair","repairs"]),
-  inspection:  new Set(["inspection","inspections","insp"])
-};
+/* =========================================================
+   RENDER
+========================================================= */
+const normalize = s => (s||"").toLowerCase().replace(/[\s\-_]+/g,"");
+
+function rowsFor(view){
+  if(["services","callbacks","repairs","inspections"].includes(view)){
+    const typ = view==="services"?"service":view==="callbacks"?"callback":view==="repairs"?"repair":"inspection";
+    return (store.tasks||[]).filter(t => normalize(t.type)===typ);
+  }
+  if(view==="attendance"){
+    return (store.attendance||[]).map(a=>{
+      const ci=parseTS(a.check_in_at), co=parseTS(a.check_out_at);
+      return {...a, duration_min: minutesDiff(ci,co) };
+    });
+  }
+  if(view==="checkins") return store.checkins||[];
+  if(view==="reports")  return store.reports||[];
+  if(view==="equipments"){
+    // Ensure an ID-like key for table row (prefer id, else pma)
+    return (store.equipments||[]).map(e => ({ id: e.id ?? e.pma_no ?? e.type, ...e }));
+  }
+  return [];
+}
 
 function render(){
-  // debug badge (project + row count)
-  const badge = document.getElementById('conn-debug') || (() => {
-    const d = document.createElement('div');
-    d.id='conn-debug';
-    d.style.cssText='position:fixed;bottom:8px;left:8px;padding:6px 10px;border-radius:8px;background:#111;color:#9ca3af;font:12px monospace;z-index:9999;opacity:.9';
-    document.body.appendChild(d);
-    return d;
-  })();
-
-  if(!isUnlocked()){ $("#viewHost").innerHTML = '<div class="muted">Locked.</div>'; badge.textContent='locked'; return; }
-
-  const host = $("#viewHost");
-  let rows = [];
-  let cols = [];
-  let title = "";
-
-  if(currentView==="services"||currentView==="callbacks"||currentView==="repairs"||currentView==="inspections"){
-    const typ =
-      currentView==="services"    ? "service" :
-      currentView==="callbacks"   ? "callback" :
-      currentView==="repairs"     ? "repair"   :
-                                    "inspection";
-
-    rows = (db.tasks||[]).filter(t => TYPE_ALIASES[typ].has(normalizeType(t.type)));
-    cols = ["id","title","status","technician_name","assigned_to","due_date","due_time","duration_min","site_id"];
-    title = currentView[0].toUpperCase()+currentView.slice(1);
-  } else if(currentView==="clients"){ rows=db.clients; cols=["id","name","email","phone"]; title="Clients"; }
-    else if(currentView==="sites"){ rows=db.sites; cols=["id","name","address","city"]; title="Sites"; }
-    else if(currentView==="equipments"){ rows=db.equipments; cols=["id","type","location","pma","serial_number","brand"]; title="Equipments"; }
-
-  if(!WIRED_VIEWS.has(currentView)){
-    const name = currentView.replace(/_/g,' ');
-    $("#title").textContent = name[0].toUpperCase()+name.slice(1);
-    $("#count").textContent = 0;
-    host.innerHTML = `
-      <div class="muted">This page is not connected to data yet.</div>
-      <div style="margin-top:10px"><button class="btn" id="connectNow">+ Connect to data</button></div>
-    `;
-    badge.textContent = 'not wired';
-    return;
-  }
-
+  if(!UNLOCKED){ $("#viewHost").innerHTML = '<div class="muted">Locked.</div>'; return; }
+  const rows = rowsFor(currentView);
+  const cols = COLUMNS[currentView] || [];
+  const title = currentView.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase());
   $("#title").textContent = title;
-  $("#count").textContent = rows?.length||0;
+  $("#count").textContent = rows?.length || 0;
 
   const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
   const tbody = '<tbody>'+ (rows||[]).map(r=>{
-      const id = r.id;
-      const tds = cols.map(c=>`<td>${fmt(r[c])}</td>`).join('');
-      return `<tr data-id="${id}">
+    const id = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
+    const tds = cols.map(c=>`<td>${fmt(r[c])}</td>`).join('');
+    return `<tr data-id="${id}">
       ${tds}
       <td class="actions">
         <div class="lr">
@@ -326,123 +348,50 @@ function render(){
     </tr>`;
   }).join('') +'</tbody>';
 
-  host.innerHTML = `<table>${thead}${tbody}</table>`;
-
-  // bind row actions
-  host.querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
-  host.querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
-
-  // update debug badge
-  const ref = (SUPABASE_URL.match(/^https:\/\/([^.]*)/)||[])[1] || 'unknown';
-  const count = rows?.length || 0;
-  badge.textContent = `supabase: ${ref} • ${currentView}: ${count}`;
+  $("#viewHost").innerHTML = `<table>${thead}${tbody}</table>`;
+  $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
+  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
 }
 
-/* ---- Schema per view (editable fields) ---- */
-const schemas = {
-  services: [
-    {key:'title',label:'Title',required:true},
-    {key:'status',label:'Status'},
-    {key:'technician_name',label:'Technician'},
-    {key:'assigned_to',label:'Assigned to'},
-    {key:'due_date',label:'Due date'},
-    {key:'due_time',label:'Due time'},
-    {key:'duration_min',label:'Duration (min)',type:'number'},
-    {key:'site_id',label:'Site ID',type:'number'},
-    {key:'description',label:'Description',type:'textarea'}
-  ],
-  callbacks: [
-    {key:'title',label:'Title',required:true},
-    {key:'status',label:'Status'},
-    {key:'technician_name',label:'Technician'},
-    {key:'assigned_to',label:'Assigned to'},
-    {key:'due_date',label:'Due date'},
-    {key:'due_time',label:'Due time'},
-    {key:'duration_min',label:'Duration (min)',type:'number'},
-    {key:'site_id',label:'Site ID',type:'number'},
-    {key:'description',label:'Description',type:'textarea'}
-  ],
-  repairs: [
-    {key:'title',label:'Title',required:true},
-    {key:'status',label:'Status'},
-    {key:'technician_name',label:'Technician'},
-    {key:'assigned_to',label:'Assigned to'},
-    {key:'due_date',label:'Due date'},
-    {key:'due_time',label:'Due time'},
-    {key:'duration_min',label:'Duration (min)',type:'number'},
-    {key:'site_id',label:'Site ID',type:'number'},
-    {key:'description',label:'Description',type:'textarea'}
-  ],
-  clients: [
-    {key:'name',label:'Name',required:true},
-    {key:'email',label:'Email'},
-    {key:'phone',label:'Phone'}
-  ],
-  sites: [
-    {key:'name',label:'Name',required:true},
-    {key:'address',label:'Address'},
-    {key:'city',label:'City'}
-  ],
-  equipments: [
-    {key:'type',label:'Type'},
-    {key:'location',label:'Location'},
-    {key:'pma',label:'PMA'},
-    {key:'serial_number',label:'Serial #'},
-    {key:'brand',label:'Brand'}
-  ],
-  // Inspections use the same schema as tasks
-  inspections: [
-    {key:'title',label:'Title',required:true},
-    {key:'status',label:'Status'},
-    {key:'technician_name',label:'Technician'},
-    {key:'assigned_to',label:'Assigned to'},
-    {key:'due_date',label:'Due date'},
-    {key:'due_time',label:'Due time'},
-    {key:'duration_min',label:'Duration (min)',type:'number'},
-    {key:'site_id',label:'Site ID',type:'number'},
-    {key:'description',label:'Description',type:'textarea'}
-  ]
-};
-
+/* =========================================================
+   FORMS / CRUD
+========================================================= */
 function fieldsFor(view){
-  if(view==="services"||view==="callbacks"||view==="repairs"||view==="inspections") return schemas[view];
-  return schemas[view]||[];
+  if(["services","callbacks","repairs","inspections"].includes(view)) return SCHEMAS.task;
+  return SCHEMAS[view] || [];
 }
-
 function fieldHTML(f, val=""){
-  const id = "f_"+f.key;
-  if(f.type==="textarea") return `<div style="grid-column:1/-1"><label for="${id}">${f.label}</label><textarea id="${id}" placeholder="${f.placeholder||''}">${fmt(val)}</textarea></div>`;
-  return `<div><label for="${id}">${f.label}${f.required?' *':''}</label><input id="${id}" ${f.type?`type="${f.type}"`:''} value="${fmt(val)}"/></div>`;
+  const id="f_"+f.key;
+  if(f.type==="textarea") return `<div style="grid-column:1/-1"><label for="${id}">${f.label}</label><textarea id="${id}">${fmt(val)}</textarea></div>`;
+  return `<div><label for="${id}">${f.label}${f.required?' *':''}</label><input id="${id}" value="${fmt(val)}"/></div>`;
 }
-
 function collectFrom(dlg, view){
-  const out = {};
+  const out={};
   for(const f of fieldsFor(view)){
-    const el = dlg.querySelector("#f_"+f.key);
-    let v = (el?.value ?? "").trim();
-    if(f.type==="number" && v!=="") v = Number(v);
-    if(f.required && !v){ el?.focus(); el?.reportValidity?.(); return null; }
+    const el=dlg.querySelector("#f_"+f.key);
+    let v=(el?.value ?? "").trim();
+    if(f.required && !v){ el?.focus(); return null; }
     out[f.key]= v===""?null:v;
   }
   return out;
 }
 
 function openForm(view, id){
-  const isTask = (view==="services"||view==="callbacks"||view==="repairs"||view==="inspections");
-  const fixedType =
-    isTask
-      ? (view==="services" ? "service"
-        : view==="callbacks" ? "callback"
-        : view==="repairs"   ? "repair"
-                             : "inspection")
-      : null;
+  const isTask = ["services","callbacks","repairs","inspections"].includes(view);
+  const fixedType = isTask ? (view==="services"?"service":view==="callbacks"?"callback":view==="repairs"?"repair":view==="inspections"?"inspection":null) : null;
 
-  const source = isTask ? db.tasks : db[view];
-  const row = (id? source.find(r=> String(r.id)===String(id)) : null) || {};
+  const source =
+    isTask ? store.tasks :
+    view==="attendance" ? store.attendance :
+    view==="checkins"   ? store.checkins   :
+    view==="reports"    ? store.reports    :
+    view==="equipments" ? store.equipments : [];
+
+  const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
   const dlg = document.createElement("dialog");
   dlg.innerHTML = `<form method="dialog">
     <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</h3>
+      <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
       <button class="btn secondary" value="close">✕</button>
     </header>
     <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
@@ -463,53 +412,55 @@ function openForm(view, id){
     e.preventDefault();
     const payload = collectFrom(dlg, view); if(!payload) return;
     try{
-      if(isTask) payload.type = fixedType;
+      if(isTask && fixedType) payload.type = fixedType;
       if(id) await updateRow(view, id, payload);
-      else await addRow(view, payload);
+      else   await addRow(view, payload);
       await syncAll(); dlg.close();
-    }catch(err){ showErrBar(err.message); }
+    }catch(err){ toast(err.message); }
   });
 
   $("#delBtn", dlg)?.addEventListener("click", async (e)=>{
     e.preventDefault();
-    if(confirm("Delete this record?")){ try{ await removeRow(view, id); await syncAll(); dlg.close(); }catch(err){ showErrBar(err.message);} }
+    if(confirm("Delete this record?")){ try{ await removeRow(view, id); await syncAll(); dlg.close(); }catch(err){ toast(err.message);} }
   });
-}
-
-async function addRow(view, payload){
-  if(view==="services"||view==="callbacks"||view==="repairs"||view==="inspections"){ await restInsert("tasks", payload); }
-  else { await restInsert(view, payload); }
 }
 
 function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
 
+async function addRow(view, payload){
+  if(["services","callbacks","repairs","inspections"].includes(view)) await restInsert("tasks", payload);
+  else await restInsert(view, payload); 
+}
 async function updateRow(view, id, patch){
   const qs = idFilter(id);
-  if(view==="services"||view==="callbacks"||view==="repairs"||view==="inspections"){ await restUpdate("tasks", qs, patch); }
-  else { await restUpdate(view, qs, patch); }
+  if(["services","callbacks","repairs","inspections"].includes(view)) await restUpdate("tasks", qs, patch);
+  else await restUpdate(view, qs, patch);
 }
-
 async function removeRow(view, id){
   const qs = idFilter(id);
-  if(view==="services"||view==="callbacks"||view==="repairs"||view==="inspections"){ await restDelete("tasks", qs); }
-  else { await restDelete(view, qs); }
+  if(["services","callbacks","repairs","inspections"].includes(view)) await restDelete("tasks", qs);
+  else await restDelete(view, qs);
 }
 
-/* Buttons */
+/* =========================================================
+   BUTTONS
+========================================================= */
 $("#newBtn").addEventListener("click", ()=> openForm(currentView, null) );
 $("#exportCsv").addEventListener("click", ()=>{
-  try{ exportCurrentTableToCsv(); toast("CSV exported."); }catch(e){ showErrBar("Export failed: "+e.message); }
-});
-
-function exportCurrentTableToCsv(){
-  const rows = Array.from($("#viewHost table tbody")?.rows||[]).map(tr=> Array.from(tr.cells).slice(0,-1).map(td=> `"${(td.textContent||'').replace(/"/g,'""')}"`).join(","));
-  const header = Array.from($("#viewHost table thead tr")?.cells||[]).slice(0,-1).map(th=>th.textContent).join(",");
+  const table = $("#viewHost table"); if(!table){ toast("Nothing to export"); return; }
+  const header = Array.from(table.querySelectorAll("thead th")).slice(0,-1).map(th=>th.textContent).join(",");
+  const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr =>
+    Array.from(tr.querySelectorAll("td")).slice(0,-1).map(td=> `"${(td.textContent||'').replace(/"/g,'""')}"`).join(",")
+  );
   const csv = [header, ...rows].join("\n");
   const blob = new Blob([csv], {type:"text/csv"});
-  const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`${currentView}.csv`; a.click(); URL.revokeObjectURL(a.href);
-}
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `${currentView}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
 
-/* init */
+/* =========================================================
+   INIT
+========================================================= */
 renderSidebar();
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
