@@ -187,15 +187,16 @@ $("#unlock").addEventListener("click", async ()=>{
 let currentView = "services";
 
 const COLUMNS = {
-  services:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-  callbacks:  ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-  repairs:    ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-  inspection_cf:   ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-  inspection_14th: ["id","title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
-  attendance: ["id","user_id","user_name","check_in_at","check_out_at","location_name"],
-  checkins:   ["id","user_id","latitude","longitude","photo_path","created_at"],
-  reports:    ["id","task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: ["id","type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"]
+  sites: [ "company_name","site_name","site_address","site_phone","site_email","state","updated_at"],
+  services:   [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  callbacks:  [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  repairs:    [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
+  inspection_cf:   [ "title","status","priority","assigned_to","scheduled_at","completed_at","location","equipment_pma","certificate_no","pma_expiry","updated_at"],
+  inspection_14th: [ "title","status","priority","assigned_to","scheduled_at","completed_at","location","equipment_pma","certificate_no","pma_expiry","updated_at"],
+  attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
+  checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
+  reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
+  equipments: [ "type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"]
 };
 
 const SCHEMAS = {
@@ -240,7 +241,31 @@ const SCHEMAS = {
     {key:'pma_expiry',label:'PMA expiry (date)'},
     {key:'contract_status',label:'Contract status'},
     {key:'contract_expiry',label:'Contract expiry (date)'}
-  ]
+  ],
+    sites: [
+    { key:'company_name', label:'Company Name' },
+    { key:'site_name',    label:'Site Name' },
+    { key:'site_address', label:'Site Address', type:'textarea' },
+    { key:'site_phone',   label:'Site Phone' },
+    { key:'site_email',   label:'Site Email' },
+    { key:'state',        label:'State' }
+  ],
+  inspection: [
+    {key:'title',         label:'Title'},
+    {key:'status',        label:'Status (open/in_progress/closed)'},
+    {key:'priority',      label:'Priority (low/normal/high/urgent)'},
+    {key:'assigned_to',   label:'Assigned to'},
+    {key:'location',      label:'Location'},
+    {key:'equipment_pma', label:'Equipment PMA'},
+    {key:'scheduled_at',  label:'Scheduled at (ISO)'},
+    {key:'started_at',    label:'Started at (ISO)'},
+    {key:'completed_at',  label:'Completed at (ISO)'},
+    {key:'result',        label:'Result (pass/fail/…)'},
+    {key:'certificate_no',label:'Certificate No.'},
+    {key:'pma_expiry',    label:'PMA expiry (date)'},
+    {key:'next_due',      label:'Next due (date)'},
+    {key:'remark',        label:'Remark', type:'textarea'}
+  ],
 };
 
 const NAV = [
@@ -261,7 +286,115 @@ const NAV = [
 ];
 
 /* Runtime store */
-const store = { tasks:[], attendance:[], checkins:[], reports:[], equipments:[] };
+const store = { tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[] };
+
+/* ---------- GLOBAL SEARCH (full-DB) ---------- */
+const SEARCHMAP = {
+  equipments: ["pma_no","name","location","brand","model_name","pma_status","contract_status"],
+  tasks: ["title","type","status","priority","assigned_to","equipment_pma","location","remark","description"],
+  inspections: ["title","subtype","status","assigned_to","location","equipment_pma","certificate_no","result","remark"],
+  reports: ["title","remark","equipment_pma","location","created_by_id","assigned_to_id"],
+  attendance: ["user_id","user_name","location_name"],
+  checkins: ["user_id","latitude","longitude","photo_path"],
+  sites: ["company_name","site_name","site_address","site_phone","site_email","state"],
+};
+
+function encodePatKeepStar(s) {
+  return encodeURIComponent(s).replace(/%2A/gi, '*');
+}
+
+function buildOrFilter(q, cols) {
+  // encode the user text exactly once
+  const safe = encodeURIComponent(q);
+  const pat  = `*${safe}*`;
+
+  // build OR list (ilike) + a few exact columns if present
+  const parts = cols.map(c => `${c}.ilike.${pat}`);
+
+  const exactCols = ["id","pma_no","equipment_pma","user_id","assigned_to_id","created_by_id"];
+  for (const c of exactCols) if (cols.includes(c)) parts.push(`${c}.eq.${safe}`);
+
+  // IMPORTANT: return a plain query string; do NOT wrap in URLSearchParams
+  return `?or=(${parts.join(",")})&select=*&limit=100`;
+}
+
+
+(function wireSearchBox(){
+  const qInput = document.getElementById('q');
+  if(!qInput) return;
+  qInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const term = (qInput.value||'').trim();
+      if(term) globalSearch(term);
+    }
+  });
+})();
+
+function smallColsFor(table) {
+  const base = {
+    equipments: [ "pma_no","name","location","brand","model_name","pma_status","contract_status","updated_at"],
+    tasks: [ "title","type","status","priority","assigned_to","equipment_pma","due_date","updated_at"],
+    reports: [ "title","remark","equipment_pma","created_at"],
+    attendance: [ "user_name","check_in_at","check_out_at","location_name"],
+    inspections: ["title","subtype","status","assigned_to","equipment_pma","completed_at","updated_at"],
+    checkins: [ "user_id","latitude","longitude","created_at"]
+  };
+  return base[table] || [];
+}
+function renderMini(headers, rows) {
+  if (!rows?.length) return `<div class="muted">No matches.</div>`;
+  return `
+    <div style="overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>${headers.map(h=>`<th style="padding:8px 10px;font-size:12px;color:var(--fg2);border-bottom:1px solid rgba(255,255,255,.08)">${h}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>`<tr>${headers.map(h=>`<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)">${fmt(r[h])}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+async function globalSearch(q){
+  if(!q || !UNLOCKED){ if(!UNLOCKED) toast("Unlock first"); return; }
+  const requests = Object.entries(SEARCHMAP).map(async ([table, cols]) => {
+    try {
+      return [table, await restSelect(table, buildOrFilter(q, cols)) || []];
+    } catch (e) {
+      console.warn("search error", table, e);
+      return [table, []];
+    }
+  });
+
+
+  const dlg = document.createElement("dialog");
+  dlg.className = "details";
+  dlg.innerHTML = `
+    <form method="dialog" style="min-width:min(1100px,96vw)">
+      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0">Search results for “${q.replace(/</g,"&lt;")}”</h3>
+        <button class="btn secondary" value="close">Close</button>
+      </header>
+      <div id="searchBody"><div class="muted">Searching…</div></div>
+    </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  const pairs = await Promise.all(requests);
+  const sections = pairs.map(([table, rows])=>{
+    const headers = smallColsFor(table);
+    const nice = table.replace("_"," ");
+    return `
+      <section style="margin:12px 0 18px">
+        <h4 style="margin:0 0 10px">${nice} <span class="muted">(${rows.length})</span></h4>
+        ${renderMini(headers, rows)}
+      </section>`;
+  }).join("");
+
+  $("#searchBody", dlg).innerHTML = sections || `<div class="muted">No matches found.</div>`;
+}
 
 /* ===================== SIDEBAR ===================== */
 function renderSidebar(){
@@ -285,14 +418,22 @@ function setActive(v){ currentView=v; renderSidebar(); render(); }
 /* ===================== FETCH ===================== */
 async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
-  const [tasks, attendance, checkins, reports, equipments] = await Promise.all([
+  const [tasks, attendance, checkins, reports, equipments, sites, inspections] = await Promise.all([
     safe(restSelect("tasks", "select=*")),
     safe(restSelect("attendance", "select=*")),
     safe(restSelect("checkins", "select=*")),
     safe(restSelect("reports", "select=*")),
-    safe(restSelect("equipments", "select=*"))
+    safe(restSelect("equipments", "select=*")),
+    safe(restSelect("sites", "select=*")),
+    safe(restSelect("inspections", "select=*"))
   ]);
-  store.tasks=tasks; store.attendance=attendance; store.checkins=checkins; store.reports=reports; store.equipments=equipments;
+  store.tasks=tasks;
+  store.attendance=attendance;
+  store.checkins=checkins;
+  store.reports=reports;
+  store.equipments=equipments;
+  store.sites=sites;
+  store.inspections=inspections;
   render();
 }
 
@@ -314,15 +455,17 @@ function rowsFor(view){
     const typ = view==="services"?"service":view==="callbacks"?"callback":"repair";
     return (store.tasks||[]).filter(t => norm(t.type)===typ);
   }
-  if (view==="inspection_cf")   return (store.tasks||[]).filter(t => isInspection(t) && isCfRenewal(t));
-  if (view==="inspection_14th") return (store.tasks||[]).filter(t => isInspection(t) && is14thSchedule(t));
-
+  if (view==="inspection_cf")
+    return (store.inspections||[]).filter(x => x.subtype === 'cf_renewal');
+  if (view==="inspection_14th")
+    return (store.inspections||[]).filter(x => x.subtype === 'schedule_14th');
   if (view==="attendance"){
     return (store.attendance||[]).map(a=>{
       const ci=parseTS(a.check_in_at), co=parseTS(a.check_out_at);
       return {...a, duration_min: minutesDiff(ci,co) };
     });
   }
+  if (view === "sites") return store.sites || [];
   if (view==="checkins")  return store.checkins||[];
   if (view==="reports")   return store.reports||[];
   if (view==="equipments"){
@@ -373,7 +516,8 @@ function render(){
 
 /* ===================== FORMS / CRUD ===================== */
 function fieldsFor(view){
-  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) return SCHEMAS.task;
+  if (["inspection_cf","inspection_14th"].includes(view)) return SCHEMAS.inspection;
+  if (["services","callbacks","repairs"].includes(view))   return SCHEMAS.task;
   return SCHEMAS[view] || [];
 }
 function fieldHTML(f, val=""){
@@ -393,19 +537,16 @@ function collectFrom(dlg, view){
 }
 
 function openForm(view, id){
-  const isTaskPage = ["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view);
-  const fixedType =
-    view === "services"        ? "service"    :
-    view === "callbacks"       ? "callback"   :
-    view === "repairs"         ? "repair"     :
-    view === "inspection_cf"   ? "inspection" :
-    view === "inspection_14th" ? "inspection" : null;
+  const isTaskPage       = ["services","callbacks","repairs"].includes(view);
+  const isInspectionPage = ["inspection_cf","inspection_14th"].includes(view);
 
   const source =
-    isTaskPage ? store.tasks :
+    isTaskPage       ? store.tasks :
+    isInspectionPage ? store.inspections :
     view==="attendance" ? store.attendance :
     view==="checkins"   ? store.checkins   :
     view==="reports"    ? store.reports    :
+    view==="sites"      ? store.sites      :
     view==="equipments" ? store.equipments : [];
 
   const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
@@ -449,18 +590,37 @@ function openForm(view, id){
 function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
 
 async function addRow(view, payload){
-  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restInsert("tasks", payload);
-  else await restInsert(view, payload);
+  if (["inspection_cf","inspection_14th"].includes(view)) {
+    payload.subtype = (view === "inspection_cf") ? "cf_renewal" : "schedule_14th";
+    await restInsert("inspections", payload);
+  } else if (["services","callbacks","repairs"].includes(view)) {
+    payload.type = (view==="services")?"service":(view==="callbacks")?"callback":"repair";
+    await restInsert("tasks", payload);
+  } else {
+    await restInsert(view, payload);
+  }
 }
+
 async function updateRow(view, id, patch){
   const qs = idFilter(id);
-  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restUpdate("tasks", qs, patch);
-  else await restUpdate(view, qs, patch);
+  if (["inspection_cf","inspection_14th"].includes(view)) {
+    await restUpdate("inspections", qs, patch);
+  } else if (["services","callbacks","repairs"].includes(view)) {
+    await restUpdate("tasks", qs, patch);
+  } else {
+    await restUpdate(view, qs, patch);
+  }
 }
+
 async function removeRow(view, id){
   const qs = idFilter(id);
-  if(["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) await restDelete("tasks", qs);
-  else await restDelete(view, qs);
+  if (["inspection_cf","inspection_14th"].includes(view)) {
+    await restDelete("inspections", qs);
+  } else if (["services","callbacks","repairs"].includes(view)) {
+    await restDelete("tasks", qs);
+  } else {
+    await restDelete(view, qs);
+  }
 }
 
 /* ===================== CSV IMPORT ===================== */
@@ -550,7 +710,7 @@ $("#exportCsv").addEventListener("click", ()=>{
 
 /* ===================== EQUIPMENT DETAILS DIALOG ===================== */
 const EQUIPMENT_DETAIL_FIELDS = [
-  "id","type","pma_no","name","location",
+   "type","pma_no","name","location",
   "brand","model_name",
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
   "speed_m/m","rise_m","stops_openings",
@@ -623,8 +783,8 @@ async function showEquipmentDetails(equipId){
     const tasks   = pma ? await restSelect("tasks",   `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
     const reports = pma ? await restSelect("reports", `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
 
-    const taskHeaders    = ["id","title","type","status","priority","assigned_to","due_date","updated_at","created_at","completed_at"];
-    const reportHeaders  = ["id","title","remark","created_at","check_in_at","check_out_at"];
+    const taskHeaders    = [ "title","type","status","priority","assigned_to","due_date","updated_at","created_at","completed_at"];
+    const reportHeaders  = [ "title","remark","created_at","check_in_at","check_out_at"];
 
     $("#equipBody", dlg).innerHTML = `
       <section style="margin-bottom:16px">
@@ -649,6 +809,19 @@ async function showEquipmentDetails(equipId){
 renderSidebar();
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
+});
+
+// Wire the global search to the input (Enter to search, Esc to clear)
+const qInput = $("#q");
+qInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const q = qInput.value.trim();
+    if (q) globalSearch(q);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    qInput.value = "";
+  }
 });
 </script>
 </body>
