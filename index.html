@@ -104,9 +104,18 @@
         <header>
           <div>
             <h3 id="title" style="margin:0">Services</h3>
-            <div class="muted"><span id="count">0</span> row(s)</div>
+            <div class="muted">
+              <span id="count">0</span> row(s)
+              <span id="countFiltered" style="display:none"> • <span id="countNow">0</span> shown</span>
+            </div>
           </div>
-          <div class="muted" id="statusText"></div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <div class="search" style="min-width:240px">
+              <span class="muted">🔍</span>
+              <input id="pageQ" placeholder="Filter this page (/, Esc)" />
+            </div>
+            <div class="muted" id="statusText"></div>
+          </div>
         </header>
         <div class="body" id="viewHost"></div>
       </div>
@@ -135,6 +144,35 @@ const fmt = v => v==null ? '' : String(v);
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='block'; setTimeout(()=>{t.style.display='none';}, 2600); }
 function parseTS(x){ try{ return x? new Date(x): null }catch{ return null } }
 function minutesDiff(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000) }
+
+/* ===== Per-page search helpers ===== */
+let PAGE_Q = "";
+const debounce = (fn, ms=200) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+function rowMatches(row, q, cols){
+  if(!q) return true;
+  const needle=q.toLowerCase();
+  for(const c of cols){
+    const v=row?.[c];
+    if(v==null) continue;
+    if(String(v).toLowerCase().includes(needle)) return true;
+  }
+  return false;
+}
+function wirePageSearch(){
+  const inp = document.getElementById("pageQ");
+  if(!inp) return;
+  inp.addEventListener("input", debounce(()=>{
+    PAGE_Q = inp.value.trim();
+    render();
+  },120));
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey){
+      e.preventDefault(); inp.focus();
+    } else if(e.key === "Escape" && document.activeElement === inp){
+      e.preventDefault(); inp.value=""; PAGE_Q=""; render();
+    }
+  });
+}
 
 /* ===================== SUPABASE (REST) ===================== */
 const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';
@@ -316,25 +354,14 @@ const SEARCHMAP = {
   sites: ["company_name","site_name","site_address","site_phone","site_email","state"],
 };
 
-function encodePatKeepStar(s) {
-  return encodeURIComponent(s).replace(/%2A/gi, '*');
-}
-
 function buildOrFilter(q, cols) {
-  // encode the user text exactly once
   const safe = encodeURIComponent(q);
   const pat  = `*${safe}*`;
-
-  // build OR list (ilike) + a few exact columns if present
   const parts = cols.map(c => `${c}.ilike.${pat}`);
-
   const exactCols = ["id","pma_no","equipment_pma","user_id","assigned_to_id","created_by_id"];
   for (const c of exactCols) if (cols.includes(c)) parts.push(`${c}.eq.${safe}`);
-
-  // IMPORTANT: return a plain query string; do NOT wrap in URLSearchParams
   return `?or=(${parts.join(",")})&select=*&limit=100`;
 }
-
 
 (function wireSearchBox(){
   const qInput = document.getElementById('q');
@@ -384,7 +411,6 @@ async function globalSearch(q){
       return [table, []];
     }
   });
-
 
   const dlg = document.createElement("dialog");
   dlg.className = "details";
@@ -493,11 +519,23 @@ function rowsFor(view){
 
 function render(){
   if(!UNLOCKED){ $("#viewHost").innerHTML = '<div class="muted">Locked.</div>'; return; }
-  const rows = rowsFor(currentView);
-  const cols = COLUMNS[currentView] || [];
+
+  const allRows = rowsFor(currentView);
+  const cols    = COLUMNS[currentView] || [];
+  const rows    = PAGE_Q ? allRows.filter(r => rowMatches(r, PAGE_Q, cols)) : allRows;
+
   const title = currentView.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase());
   $("#title").textContent = title;
-  $("#count").textContent = rows?.length || 0;
+
+  // counts
+  $("#count").textContent = allRows?.length || 0;
+  const cf = $("#countFiltered"), cn = $("#countNow");
+  if (PAGE_Q && allRows) {
+    cf.style.display = "inline";
+    cn.textContent   = rows.length;
+  } else {
+    cf.style.display = "none";
+  }
 
   const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
   const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
@@ -591,7 +629,7 @@ function openForm(view, id){
     e.preventDefault();
     const payload = collectFrom(dlg, view); if(!payload) return;
     try{
-      if(isTaskPage && fixedType) payload.type = fixedType;
+      // No auto-changing of types on edit
       if(id) await updateRow(view, id, payload);
       else   await addRow(view, payload);
       await syncAll(); dlg.close();
@@ -617,7 +655,6 @@ async function addRow(view, payload){
     await restInsert(view, payload);
   }
 }
-
 async function updateRow(view, id, patch){
   const qs = idFilter(id);
   if (["inspection_cf","inspection_14th"].includes(view)) {
@@ -628,7 +665,6 @@ async function updateRow(view, id, patch){
     await restUpdate(view, qs, patch);
   }
 }
-
 async function removeRow(view, id){
   const qs = idFilter(id);
   if (["inspection_cf","inspection_14th"].includes(view)) {
@@ -661,7 +697,8 @@ function parseCSV(text){
   return out;
 }
 function viewToTable(view){
-  if (["services","callbacks","repairs","inspection_cf","inspection_14th"].includes(view)) return "tasks";
+  if (["services","callbacks","repairs"].includes(view)) return "tasks";
+  if (["inspection_cf","inspection_14th"].includes(view)) return "inspections";
   return view;
 }
 function normalizeKey(s){ return String(s||'').trim().toLowerCase().replace(/[\s\-]+/g,'_'); }
@@ -824,6 +861,7 @@ async function showEquipmentDetails(equipId){
 
 /* ===================== INIT ===================== */
 renderSidebar();
+wirePageSearch();
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
 });
