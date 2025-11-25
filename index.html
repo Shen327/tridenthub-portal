@@ -225,6 +225,7 @@ $("#unlock").addEventListener("click", async ()=>{
 let currentView = "services";
 
 const COLUMNS = {
+  contracts: [ "building_name","brand","equipment_type","number_lift","factory_code","location_state","pma_no","pma_expiry","cf_validate","rates_per_month","contract_type","takeover_date","contract_start","contract_end","agreement_validaty","service","contract_status","remark","updated_at"],
   sites: [ "company_name","site_name","site_address","site_phone","site_email","state","updated_at"],
   services:   [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   callbacks:  [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
@@ -234,10 +235,34 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"]
+  equipments: [ "type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  hr:              ["name","position","phone","email","employment_status","updated_at"],
+  tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
+  sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
+  support:         ["title","category","priority","status","assigned_to","opened_at","updated_at"],
 };
 
 const SCHEMAS = {
+  contracts: [
+    {key:'building_name',      label:'Building name'},
+    {key:'brand',              label:'Brand'},
+    {key:'equipment_type',     label:'Equipment type'},
+    {key:'number_lift',        label:'Number of lifts'},
+    {key:'factory_code',       label:'Factory code'},
+    {key:'location_state',     label:'Location (state)'},
+    {key:'pma_no',             label:'PMA no'},
+    {key:'pma_expiry',         label:'PMA expiry (date)'},
+    {key:'cf_validate',        label:'CF validate (date)'},
+    {key:'rates_per_month',    label:'Rates / month'},
+    {key:'contract_type',      label:'Contract type'},
+    {key:'takeover_date',      label:'Takeover date'},
+    {key:'contract_start',     label:'Contract start'},
+    {key:'contract_end',       label:'Contract end'},
+    {key:'agreement_validaty', label:'Agreement validaty'},
+    {key:'service',            label:'Service'},
+    {key:'contract_status',    label:'Contract status'},
+    {key:'remark',             label:'Remark', type:'textarea'}
+  ],
   task: [
     {key:'title',label:'Title',required:true},
     {key:'type',label:'Type (service/callback/repair/inspection)'},
@@ -321,11 +346,48 @@ const SCHEMAS = {
     {key:'next_due',      label:'Next due (date)'},
     {key:'remark',        label:'Remark', type:'textarea'}
   ],
+  hr: [
+    {key:"name",               label:"Name", required:true},
+    {key:"position",           label:"Position"},
+    {key:"phone",              label:"Phone"},
+    {key:"email",              label:"Email"},
+    {key:"employment_status",  label:"Employment Status"}
+  ],
+  tools_mgmt: [
+    {key:"tool_name",      label:"Tool Name", required:true},
+    {key:"category",       label:"Category"},
+    {key:"serial_no",      label:"Serial No."},
+    {key:"status",         label:"Status"},
+    {key:"assigned_to",    label:"Assigned To"},
+    {key:"location",       label:"Location"},
+    {key:"calibration_due",label:"Calibration Due (date)"}
+  ],
+  sub_contractors: [
+    {key:"company_name",   label:"Company Name", required:true},
+    {key:"contact_person", label:"Contact Person"},
+    {key:"phone",          label:"Phone"},
+    {key:"email",          label:"Email"},
+    {key:"specialty",      label:"Specialty"},
+    {key:"status",         label:"Status"}
+  ],
+  support: [
+    {key:"title",        label:"Title", required:true},
+    {key:"category",     label:"Category"},
+    {key:"priority",     label:"Priority (low/normal/high/urgent)"},
+    {key:"status",       label:"Status (open/in_progress/closed)"},
+    {key:"assigned_to",  label:"Assigned To"},
+    {key:"opened_at",    label:"Opened at (ISO)"},
+    {key:"remark",       label:"Remark", type:"textarea"}
+  ],
 };
 
 const NAV = [
-  { title:"Sales", items:[ {key:"new_contract", label:"New Contract"} ]},
-  { title:"Project", items:[ {key:"new_project",  label:"New Installation"} ]},
+  { title:"Sales", items:[ {key:"contract", label:"Contract"} ]},
+  { title:"Project", items:[ 
+    {key:"new_install",  label:"New Installation"},
+    {key:"new_modern",  label:"New Modernization"},
+    {key:"new_contract",  label:"New Contract"}  
+  ]},
   { title:"Service Ops", items:[
     {key:"services",   label:"Services"},
     {key:"callbacks",  label:"Call Back"},
@@ -337,14 +399,24 @@ const NAV = [
   { title:"Compliance", items:[
     {key:"inspection_cf",   label:"CF Renewal Inspection"},
     {key:"inspection_14th", label:"14th Schedule Inspection"}
-  ]}
+  ]},
+  { title:"Resource Management", items:[
+    {key:"hr",              label:"Human Resource"},
+    {key:"tools_mgmt",      label:"Tools Management"},
+    {key:"sub_contractors", label:"Sub-Contractor Management"},
+    {key:"support",         label:"Troubleshooting Support"}
+  ]},
 ];
 
 /* Runtime store */
-const store = { tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[] };
+const store = {
+  tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[],  hr:[], tools_mgmt:[], sub_contractors:[], support:[], contracts:[]
+};
+
 
 /* ---------- GLOBAL SEARCH (full-DB) ---------- */
 const SEARCHMAP = {
+  contracts: ["building_name","brand","equipment_type","number_lift","factory_code","location_state","pma_no","contract_type","contract_status","remark"],
   equipments: ["pma_no","name","location","brand","model_name","pma_status","contract_status"],
   tasks: ["title","type","status","priority","assigned_to","equipment_pma","location","remark","description"],
   inspections: ["title","subtype","status","assigned_to","location","equipment_pma","certificate_no","result","remark"],
@@ -352,6 +424,10 @@ const SEARCHMAP = {
   attendance: ["user_id","user_name","location_name"],
   checkins: ["user_id","latitude","longitude","photo_path"],
   sites: ["company_name","site_name","site_address","site_phone","site_email","state"],
+  hr: ["name","position","phone","email","employment_status"],
+  tools_mgmt: ["tool_name","category","serial_no","status","assigned_to","location"],
+  sub_contractors: ["company_name","contact_person","phone","email","specialty","status"],
+  support: ["title","category","priority","status","assigned_to","remark"],
 };
 
 function buildOrFilter(q, cols) {
@@ -377,6 +453,7 @@ function buildOrFilter(q, cols) {
 
 function smallColsFor(table) {
   const base = {
+    contracts: ["building_name","brand","equipment_type","pma_no","contract_type","contract_status","updated_at"],
     equipments: [ "pma_no","name","location","brand","model_name","pma_status","contract_status","updated_at"],
     tasks: [ "title","type","status","priority","assigned_to","equipment_pma","due_date","updated_at"],
     reports: [ "title","remark","equipment_pma","created_at"],
@@ -461,22 +538,21 @@ function setActive(v){ currentView=v; renderSidebar(); render(); }
 /* ===================== FETCH ===================== */
 async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
-  const [tasks, attendance, checkins, reports, equipments, sites, inspections] = await Promise.all([
+    const [tasks, attendance, checkins, reports, equipments, sites, inspections, hr, tools_mgmt, sub_contractors, support] = await Promise.all([
+    safe(restSelect("contracts", "select=*")),
     safe(restSelect("tasks", "select=*")),
     safe(restSelect("attendance", "select=*")),
     safe(restSelect("checkins", "select=*")),
     safe(restSelect("reports", "select=*")),
     safe(restSelect("equipments", "select=*")),
     safe(restSelect("sites", "select=*")),
-    safe(restSelect("inspections", "select=*"))
+    safe(restSelect("inspections", "select=*")),
+    safe(restSelect("hr", "select=*")),
+    safe(restSelect("tools_mgmt", "select=*")),
+    safe(restSelect("sub_contractors", "select=*")),
+    safe(restSelect("support", "select=*"))
   ]);
-  store.tasks=tasks;
-  store.attendance=attendance;
-  store.checkins=checkins;
-  store.reports=reports;
-  store.equipments=equipments;
-  store.sites=sites;
-  store.inspections=inspections;
+  store.contracts = contracts; store.tasks=tasks; store.attendance=attendance; store.checkins=checkins; store.reports=reports; store.equipments=equipments; store.sites=sites; store.inspections=inspections; store.hr=hr; store.tools_mgmt=tools_mgmt; store.sub_contractors=sub_contractors; store.support=support;
   render();
 }
 
@@ -494,6 +570,7 @@ function is14thSchedule(t){
 
 /* ===================== RENDER ===================== */
 function rowsFor(view){
+  if (view === "contracts") return store.contracts || [];
   if (["services","callbacks","repairs"].includes(view)){
     const typ = view==="services"?"service":view==="callbacks"?"callback":"repair";
     return (store.tasks||[]).filter(t => norm(t.type)===typ);
