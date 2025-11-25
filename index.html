@@ -383,10 +383,10 @@ const SCHEMAS = {
 
 const NAV = [
   { title:"Sales", items:[ {key:"contracts", label:"Contracts"} ]},
-  { title:"Project", items:[ 
+  { title:"Project", items:[
     {key:"new_install",  label:"New Installation"},
-    {key:"new_modern",  label:"New Modernization"},
-    {key:"new_contract",  label:"New Contract"}  
+    {key:"new_modern",   label:"New Modernization"},
+    {key:"new_contract", label:"New Contract"}
   ]},
   { title:"Service Operation", items:[
     {key:"services",   label:"Services"},
@@ -410,9 +410,9 @@ const NAV = [
 
 /* Runtime store */
 const store = {
-  tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[],  hr:[], tools_mgmt:[], sub_contractors:[], support:[], contracts:[]
+  tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[],
+  hr:[], tools_mgmt:[], sub_contractors:[], support:[], contracts:[]
 };
-
 
 /* ---------- GLOBAL SEARCH (full-DB) ---------- */
 const SEARCHMAP = {
@@ -540,18 +540,9 @@ async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
 
   const [
-    contracts,      
-    tasks,
-    attendance,
-    checkins,
-    reports,
-    equipments,
-    sites,
-    inspections,
-    hr,
-    tools_mgmt,
-    sub_contractors,
-    support
+    contracts, tasks, attendance, checkins, reports,
+    equipments, sites, inspections, hr, tools_mgmt,
+    sub_contractors, support
   ] = await Promise.all([
     safe(restSelect("contracts", "select=*")),
     safe(restSelect("tasks", "select=*")),
@@ -567,7 +558,7 @@ async function syncAll(){
     safe(restSelect("support", "select=*"))
   ]);
 
-  store.contracts        = contracts;    
+  store.contracts        = contracts;
   store.tasks            = tasks;
   store.attendance       = attendance;
   store.checkins         = checkins;
@@ -583,19 +574,9 @@ async function syncAll(){
   render();
 }
 
-/* ===================== FILTER HELPERS (Inspections) ===================== */
-const norm = (s)=> (s||"").toLowerCase();
-function isInspection(t){ return norm(t.type)==="inspection"; }
-function isCfRenewal(t){
-  const text = [t.title,t.description,t.task_remark,t.remark].map(norm).join(" ");
-  return /(^|\b)cf\b|certificate of fitness|cf renewal/.test(text);
-}
-function is14thSchedule(t){
-  const text = [t.title,t.description,t.task_remark,t.remark].map(norm).join(" ");
-  return /14(th)?\s*schedule/.test(text);
-}
-
 /* ===================== RENDER ===================== */
+const norm = (s)=> (s||"").toLowerCase();
+
 function rowsFor(view){
   if (view === "contracts") return store.contracts || [];
   if (["services","callbacks","repairs"].includes(view)){
@@ -631,15 +612,10 @@ function render(){
   const title = currentView.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase());
   $("#title").textContent = title;
 
-  // counts
   $("#count").textContent = allRows?.length || 0;
   const cf = $("#countFiltered"), cn = $("#countNow");
-  if (PAGE_Q && allRows) {
-    cf.style.display = "inline";
-    cn.textContent   = rows.length;
-  } else {
-    cf.style.display = "none";
-  }
+  if (PAGE_Q && allRows) { cf.style.display = "inline"; cn.textContent = rows.length; }
+  else { cf.style.display = "none"; }
 
   const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
   const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
@@ -660,15 +636,27 @@ function render(){
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
   $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
 
-  // row click for equipments -> open detail dialog
+  // Row-click detail dialogs
   const tbodyEl = $("#viewHost table tbody");
-  if (tbodyEl && currentView === "equipments") {
+  if (!tbodyEl) return;
+
+  if (currentView === "equipments") {
     tbodyEl.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
       const tr = e.target.closest("tr[data-id]");
       if (!tr) return;
       const id = tr.dataset.id;
       if (id) showEquipmentDetails(id);
+    });
+  }
+
+  if (currentView === "contracts") {
+    tbodyEl.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const tr = e.target.closest("tr[data-id]");
+      if (!tr) return;
+      const id = tr.dataset.id;
+      if (id) showContractDetails(id);
     });
   }
 }
@@ -700,13 +688,14 @@ function openForm(view, id){
   const isInspectionPage = ["inspection_cf","inspection_14th"].includes(view);
 
   const source =
-    isTaskPage       ? store.tasks :
-    isInspectionPage ? store.inspections :
-    view==="attendance" ? store.attendance :
-    view==="checkins"   ? store.checkins   :
-    view==="reports"    ? store.reports    :
-    view==="sites"      ? store.sites      :
-    view==="equipments" ? store.equipments : [];
+    view==="contracts"   ? store.contracts   :
+    isTaskPage           ? store.tasks       :
+    isInspectionPage     ? store.inspections :
+    view==="attendance"  ? store.attendance  :
+    view==="checkins"    ? store.checkins    :
+    view==="reports"     ? store.reports     :
+    view==="sites"       ? store.sites       :
+    view==="equipments"  ? store.equipments  : [];
 
   const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
   const dlg = document.createElement("dialog");
@@ -733,7 +722,6 @@ function openForm(view, id){
     e.preventDefault();
     const payload = collectFrom(dlg, view); if(!payload) return;
     try{
-      // No auto-changing of types on edit
       if(id) await updateRow(view, id, payload);
       else   await addRow(view, payload);
       await syncAll(); dlg.close();
@@ -742,7 +730,10 @@ function openForm(view, id){
 
   $("#delBtn", dlg)?.addEventListener("click", async (e)=>{
     e.preventDefault();
-    if(confirm("Delete this record?")){ try{ await removeRow(view, id); await syncAll(); dlg.close(); }catch(err){ toast(err.message);} }
+    if(confirm("Delete this record?")){
+      try{ await removeRow(view, id); await syncAll(); dlg.close(); }
+      catch(err){ toast(err.message); }
+    }
   });
 }
 
@@ -852,21 +843,7 @@ $("#csvFile").addEventListener("change",(e)=>{
   const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
 });
 
-/* ===================== EXPORT + NEW ===================== */
-$("#newBtn").addEventListener("click", ()=> openForm(currentView, null) );
-$("#exportCsv").addEventListener("click", ()=>{
-  const table = $("#viewHost table"); if(!table){ toast("Nothing to export"); return; }
-  const header = Array.from(table.querySelectorAll("thead th")).slice(0,-1).map(th=>th.textContent).join(",");
-  const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr =>
-    Array.from(tr.querySelectorAll("td")).slice(0,-1).map(td=> `"${(td.textContent||'').replace(/"/g,'""')}"`).join(",")
-  );
-  const csv = [header, ...rows].join("\n");
-  const blob = new Blob([csv], {type:"text/csv"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = `${currentView}.csv`; a.click(); URL.revokeObjectURL(a.href);
-});
-
-/* ===================== EQUIPMENT DETAILS DIALOG ===================== */
+/* ===================== DETAILS DIALOGS ===================== */
 const EQUIPMENT_DETAIL_FIELDS = [
    "type","pma_no","name","location",
   "brand","model_name",
@@ -877,35 +854,127 @@ const EQUIPMENT_DETAIL_FIELDS = [
   "pma_status","pma_expiry","contract_status","contract_expiry",
   "created_at","updated_at"
 ];
+
+const CONTRACT_DETAIL_FIELDS = [
+  "id",
+  "building_name","brand","equipment_type","number_lift",
+  "factory_code","location_state",
+  "pma_no","pma_expiry","cf_validate",
+  "rates_per_month","contract_type",
+  "takeover_date","contract_start","contract_end",
+  "agreement_validity","service","contract_status","remark",
+  "created_at","updated_at"
+];
+
 const fDate = (v) => v ? new Date(v).toISOString().slice(0,10) : "";
 const daysLeft = (v) => {
   if (!v) return null;
   const d = (new Date(v) - new Date()) / 86400000;
   return Math.round(d);
 };
+
+function parseAnyDate(val) {
+  if (!val) return null;
+
+  // Already a Date?
+  if (val instanceof Date) return isNaN(val) ? null : val;
+
+  // Numbers (epoch ms)
+  if (typeof val === "number") {
+    const d = new Date(val);
+    return isNaN(d) ? null : d;
+  }
+
+  const s = String(val).trim();
+  if (!s) return null;
+
+  // ISO / yyyy-mm-dd (or anything Date can natively read)
+  const native = new Date(s);
+  if (!isNaN(native)) return native;
+
+  // dd-MMM-yy or dd-MMM-yyyy (e.g., 27-Feb-26, 30-Oct-2025)
+  const m1 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if (m1) {
+    const day = parseInt(m1[1], 10);
+    const mon = m1[2].toLowerCase();
+    let year = parseInt(m1[3], 10);
+    const months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    const mm = months[mon];
+    if (mm != null) {
+      if (year < 100) year = year < 50 ? 2000 + year : 1900 + year; // pivot
+      const d = new Date(Date.UTC(year, mm, day));
+      return isNaN(d) ? null : d;
+    }
+  }
+
+  // dd/MM/yyyy or dd/MM/yy
+  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m2) {
+    const day = parseInt(m2[1], 10);
+    const mm  = parseInt(m2[2], 10) - 1;
+    let year  = parseInt(m2[3], 10);
+    if (year < 100) year = year < 50 ? 2000 + year : 1900 + year;
+    const d = new Date(Date.UTC(year, mm, day));
+    return isNaN(d) ? null : d;
+  }
+
+  // Not a date (e.g., "ok")
+  return null;
+}
+
+function formatDateSafe(val) {
+  const d = parseAnyDate(val);
+  return d ? d.toISOString().slice(0, 10) : String(val ?? "");
+}
+
+function daysLeftSafe(val) {
+  const d = parseAnyDate(val);
+  if (!d) return null;
+  const today = new Date();
+  // Normalize times to midnight UTC for clarity
+  const D = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const T = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  return Math.round((D - T) / 86400000);
+}
+
 function kvGrid(obj, keys) {
+  // Which keys should be treated as "dates"
+  const dateKeys = new Set([
+    "pma_expiry","cf_validate","takeover_date","contract_start","contract_end",
+    "agreement_validity","created_at","updated_at"
+  ]);
+
+  // Which date keys should show the "days left/overdue" badge
+  const badgeKeys = new Set(["pma_expiry","contract_end"]);
+
   return `
     <div style="display:grid;grid-template-columns: 220px 1fr; gap:10px;">
       ${keys.map(k => {
-        let val = obj?.[k];
-        if (k.endsWith("_expiry") || k.endsWith("_at")) val = fDate(val);
+        let rawVal = obj?.[k];
+        let val = dateKeys.has(k) ? formatDateSafe(rawVal) : fmt(rawVal);
+
+        // Optional badge only if it's a real date
         let badge = "";
-        if (k.endsWith("_expiry")) {
-          const d = daysLeft(obj?.[k]);
-          if (typeof d === "number") {
-            const color = d < 0 ? "var(--danger)" : (d <= 30 ? "rgb(234,179,8)" : "var(--ok)");
-            const text  = d < 0 ? `${Math.abs(d)} day(s) overdue` : (d === 0 ? "expires today" : `${d} day(s) left`);
+        if (badgeKeys.has(k)) {
+          const dLeft = daysLeftSafe(rawVal);
+          if (typeof dLeft === "number") {
+            const color = dLeft < 0 ? "var(--danger)" : (dLeft <= 30 ? "rgb(234,179,8)" : "var(--ok)");
+            const text  = dLeft < 0 ? `${Math.abs(dLeft)} day(s) overdue`
+                        : dLeft === 0 ? "expires today"
+                        : `${dLeft} day(s) left`;
             badge = `<span style="margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid ${color};color:${color};font-size:12px">${text}</span>`;
           }
         }
+
         return `
           <div class="muted" style="word-break:break-word">${k}</div>
-          <div style="word-break:break-word">${fmt(val)}${badge}</div>
+          <div style="word-break:break-word">${val}${badge}</div>
         `;
       }).join("")}
     </div>
   `;
 }
+
 function miniTable(headers, rows) {
   if (!rows?.length) return `<div class="muted">No records.</div>`;
   return `
@@ -963,6 +1032,52 @@ async function showEquipmentDetails(equipId){
   }
 }
 
+async function showContractDetails(contractId){
+  const dlg = document.createElement("dialog");
+  dlg.className = "details";
+  dlg.innerHTML = `
+    <form method="dialog" style="min-width:min(980px,96vw)">
+      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0">Contract details</h3>
+        <button class="btn secondary" value="close">Close</button>
+      </header>
+      <div id="contractBody"><div class="muted">Loading…</div></div>
+    </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  try {
+    const [c] = await restSelect("contracts", `?id=eq.${encodeURIComponent(contractId)}&select=*`);
+    if (!c) { $("#contractBody", dlg).innerHTML = `<div class="muted">Contract not found.</div>`; return; }
+
+    const pma = c.pma_no ?? null;
+    const equipment = pma ? (await restSelect("equipments", `?pma_no=eq.${encodeURIComponent(pma)}&select=*`))[0] : null;
+    const tasks = pma ? await restSelect("tasks", `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&order=created_at.desc&limit=20`) : [];
+
+    const taskHeaders = ["title","type","status","priority","assigned_to","due_date","updated_at"];
+    const equipHeaders = ["type","name","brand","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
+
+    $("#contractBody", dlg).innerHTML = `
+      <section style="margin-bottom:16px">
+        <h4 style="margin:0 0 10px">Overview</h4>
+        ${kvGrid(c, CONTRACT_DETAIL_FIELDS)}
+      </section>
+
+      <section style="margin-bottom:16px">
+        <h4 style="margin:0 0 10px">Linked Equipment ${pma ? `(PMA = ${fmt(pma)})` : ""}</h4>
+        ${equipment ? miniTable(equipHeaders, [equipment]) : `<div class="muted">No equipment linked.</div>`}
+      </section>
+
+      <section>
+        <h4 style="margin:0 0 10px">Recent Tasks ${pma ? `(equipment_pma = ${fmt(pma)})` : ""}</h4>
+        ${miniTable(taskHeaders, tasks)}
+      </section>
+    `;
+  } catch (err) {
+    $("#contractBody", dlg).innerHTML = `<div class="muted">Error: ${fmt(err.message)}</div>`;
+  }
+}
+
 /* ===================== INIT ===================== */
 renderSidebar();
 wirePageSearch();
@@ -970,7 +1085,7 @@ document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
 });
 
-// Wire the global search to the input (Enter to search, Esc to clear)
+// Global search shortcuts (Enter/Escape)
 const qInput = $("#q");
 qInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
