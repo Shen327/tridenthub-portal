@@ -225,7 +225,7 @@ $("#unlock").addEventListener("click", async ()=>{
 let currentView = "services";
 
 const COLUMNS = {
-  contracts: [ "building_name","brand","equipment_type","number_lift","factory_code","location_state","pma_no","pma_expiry","cf_validate","rates_per_month","contract_type","takeover_date","contract_start","contract_end","agreement_validaty","service","contract_status","remark","updated_at"],
+  contracts: [ "building_name","brand","equipment_type","number_lift","factory_code","location_state","pma_no","pma_expiry","cf_validate","rates_per_month","contract_type","takeover_date","contract_start","contract_end","agreement_validity","service","contract_status","remark","updated_at"],
   sites: [ "company_name","site_name","site_address","site_phone","site_email","state","updated_at"],
   services:   [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
   callbacks:  [ "title","status","priority","assigned_to","due_date","location","equipment_pma","checked_in_at","checked_out_at","updated_at"],
@@ -258,7 +258,7 @@ const SCHEMAS = {
     {key:'takeover_date',      label:'Takeover date'},
     {key:'contract_start',     label:'Contract start'},
     {key:'contract_end',       label:'Contract end'},
-    {key:'agreement_validaty', label:'Agreement validaty'},
+    {key:'agreement_validity', label:'Agreement validity'},
     {key:'service',            label:'Service'},
     {key:'contract_status',    label:'Contract status'},
     {key:'remark',             label:'Remark', type:'textarea'}
@@ -382,13 +382,13 @@ const SCHEMAS = {
 };
 
 const NAV = [
-  { title:"Sales", items:[ {key:"contract", label:"Contract"} ]},
+  { title:"Sales", items:[ {key:"contracts", label:"Contracts"} ]},
   { title:"Project", items:[ 
     {key:"new_install",  label:"New Installation"},
     {key:"new_modern",  label:"New Modernization"},
     {key:"new_contract",  label:"New Contract"}  
   ]},
-  { title:"Service Ops", items:[
+  { title:"Service Operation", items:[
     {key:"services",   label:"Services"},
     {key:"callbacks",  label:"Call Back"},
     {key:"repairs",    label:"Repair"},
@@ -538,7 +538,21 @@ function setActive(v){ currentView=v; renderSidebar(); render(); }
 /* ===================== FETCH ===================== */
 async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
-    const [tasks, attendance, checkins, reports, equipments, sites, inspections, hr, tools_mgmt, sub_contractors, support] = await Promise.all([
+
+  const [
+    contracts,      
+    tasks,
+    attendance,
+    checkins,
+    reports,
+    equipments,
+    sites,
+    inspections,
+    hr,
+    tools_mgmt,
+    sub_contractors,
+    support
+  ] = await Promise.all([
     safe(restSelect("contracts", "select=*")),
     safe(restSelect("tasks", "select=*")),
     safe(restSelect("attendance", "select=*")),
@@ -552,7 +566,20 @@ async function syncAll(){
     safe(restSelect("sub_contractors", "select=*")),
     safe(restSelect("support", "select=*"))
   ]);
-  store.contracts = contracts; store.tasks=tasks; store.attendance=attendance; store.checkins=checkins; store.reports=reports; store.equipments=equipments; store.sites=sites; store.inspections=inspections; store.hr=hr; store.tools_mgmt=tools_mgmt; store.sub_contractors=sub_contractors; store.support=support;
+
+  store.contracts        = contracts;    
+  store.tasks            = tasks;
+  store.attendance       = attendance;
+  store.checkins         = checkins;
+  store.reports          = reports;
+  store.equipments       = equipments;
+  store.sites            = sites;
+  store.inspections      = inspections;
+  store.hr               = hr;
+  store.tools_mgmt       = tools_mgmt;
+  store.sub_contractors  = sub_contractors;
+  store.support          = support;
+
   render();
 }
 
