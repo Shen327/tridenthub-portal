@@ -5,16 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TRIDENT Portal</title>
   <style>
-    :root{
-      --bg:#0b1220;--bg2:#0e1626;--panel:#0f172a;--muted:#8aa0b8;--ring:#60a5fa;
-      --fg:#e2e8f0;--fg2:#cbd5e1;--brand:#2563eb;--ok:#16a34a;--danger:#ef4444;
-    }
+    :root{ --bg:#0b1220;--bg2:#0e1626;--panel:#0f172a;--muted:#8aa0b8;--ring:#60a5fa;
+      --fg:#e2e8f0;--fg2:#cbd5e1;--brand:#2563eb;--ok:#16a34a;--danger:#ef4444; }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--fg);
          font:14px/1.45 system-ui,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif}
     .app{display:flex;height:100%}
-    /* Sidebar */
     .sidebar{width:260px;min-width:240px;background:rgba(16,24,40,.90);backdrop-filter: blur(8px);
              border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column}
     .sidebar header{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:700}
@@ -24,7 +21,6 @@
     .item{display:flex;gap:10px;align-items:center;padding:9px 10px;margin:4px 6px;border-radius:10px;cursor:pointer}
     .item:hover{background:rgba(255,255,255,.06)}
     .item.active{background:rgba(37,99,235,.18);outline:1px solid rgba(37,99,235,.35)}
-    /* Main */
     .main{flex:1;display:flex;flex-direction:column;min-width:0}
     .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid rgba(255,255,255,.06)}
     .search{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;min-width:280px}
@@ -37,7 +33,6 @@
     .btn.secondary{background:rgba(255,255,255,.06);border-color:#475569;color:#e5e7eb}
     .btn.danger{background:#b91c1c;border-color:#b91c1c}
     .btn.sm { padding:.38rem .6rem; border-radius:10px; font-weight:600; }
-    .btn:disabled{opacity:.5; cursor:not-allowed}
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top}
     th{font-size:12px;color:var(--fg2)}
@@ -51,36 +46,27 @@
     input,select,textarea{width:100%;background:#0b1220;border:1px solid #3a4a61;color:var(--fg);padding:8px;border-radius:10px}
     input:focus,select:focus,textarea:focus{outline:2px solid var(--ring);box-shadow:0 0 0 3px rgba(96,165,250,.25);border-color:#60a5fa}
     .toast{position:fixed;right:16px;bottom:14px;background:#0b1220;border:1px solid #475569;border-radius:12px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.35);z-index:60}
-    /* Lock card */
     #lock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#0b1220;border:1px solid #475569;border-radius:16px;padding:18px;width:min(520px,92vw);z-index:50}
     #lock h3{margin:0 0 10px}
     #lock .row{display:flex;gap:8px}
     #error{display:none;background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.35);padding:8px 10px;border-radius:10px;margin:8px 0}
     @media (max-width: 880px){ .sidebar{position:fixed;transform:translateX(-100%);z-index:70;transition:.25s} .sidebar.show{transform:translateX(0)} }
-
-    /* ===== Detail dialog: higher contrast & clarity ===== */
-    :root{
-      --dlg-bg:#0a0f1a; --dlg-fg:#e8eef6; --dlg-muted:#a9bed3; --dlg-key:#9cc3ff; --dlg-edge:#4b5b70; --dlg-row:#101828;
-    }
+    :root{ --dlg-bg:#0a0f1a; --dlg-fg:#e8eef6; --dlg-muted:#a9bed3; --dlg-key:#9cc3ff; --dlg-edge:#4b5b70; --dlg-row:#101828; }
     dialog.details{ color:var(--dlg-fg); background:var(--dlg-bg); border:1px solid var(--dlg-edge); border-radius:16px; padding:0; }
     dialog.details::backdrop{ background:rgba(0,0,0,.70); }
     dialog.details form{ max-height:82vh; overflow:auto; padding:16px; }
     dialog.details h3{ color:#fafdff; letter-spacing:.2px; }
     dialog.details h4{ color:#f4f7fb; margin:14px 0 10px; }
-    .kv{ display:grid; grid-template-columns:220px 1fr; gap:10px 18px; padding:14px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.08); border-radius:12px; }
-    .kv .k{ color:var(--dlg-key); font-weight:700; font-size:13px; }
-    .kv .v{ color:var(--dlg-fg); font-weight:550; font-size:14px; word-break:break-word; }
     dialog.details table{ width:100%; border-collapse:collapse; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.10); border-radius:12px; overflow:hidden; font-size:13px; }
     dialog.details th{ color:#d7e2ee; background:rgba(255,255,255,.06); text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
     dialog.details td, dialog.details th{ border-bottom:1px solid rgba(255,255,255,.09); padding:9px 11px; }
     dialog.details tbody tr:nth-child(even) td{ background:rgba(255,255,255,.02); }
     dialog.details tbody tr:hover td{ background:var(--dlg-row); }
-    dialog.details .muted{ color:var(--dlg-muted); }
     .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800; line-height:1.5; }
-    .badge.ok{ color:#4ade80; background:rgba(34,197,94,.14); border:1px solid rgba(34,197,94,.45); }
-    .badge.dang{ color:#f87171; background:rgba(239,68,68,.14); border:1px solid rgba(239,68,68,.45); }
-    .badge.warn{ color:#fbbf24; background:rgba(251,191,36,.14); border:1px solid rgba(251,191,36,.45); }
   </style>
+
+  <!-- Supabase JS for realtime -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -142,7 +128,8 @@
 const $ = (s, r=document)=>r.querySelector(s);
 const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 const fmt = v => v==null ? '' : String(v);
-function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='block'; setTimeout(()=>{t.style.display='none';}, 2600); }
+const byId = (root, id) => root.querySelector('#' + CSS.escape(id));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='block'; setTimeout(()=>{t.style.display='none';}, 2800); }
 function parseTS(x){ try{ return x? new Date(x): null }catch{ return null } }
 function minutesDiff(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000) }
 
@@ -203,6 +190,29 @@ const restInsert = (table, rows) => restFetch(`/${table}`, { method:'POST', body
 const restUpdate = (table, filterQS, patch) => restFetch(`/${table}${filterQS}`, { method:'PATCH', body: patch, prefer:'return=representation' });
 const restDelete = (table, filterQS) => restFetch(`/${table}${filterQS}`, { method:'DELETE' });
 
+/* ---------- Fetch ALL helper (pagination) ---------- */
+const PAGE_SIZE = 1000;
+async function restSelectAll(table, qs = "", pageSize = PAGE_SIZE) {
+  // normalize query string and guarantee select=*
+  let base = qs ? (qs.startsWith("?") ? qs : `?${qs}`) : "?select=*";
+  if (!/(\?|&)select=/.test(base)) base += (base.includes("?") ? "&" : "?") + "select=*";
+
+  let offset = 0;
+  const out = [];
+  while (true) {
+    const suffix = `${base}${base.includes("?") ? "&" : "?"}limit=${pageSize}&offset=${offset}`;
+    const page = await restSelect(table, suffix);
+    if (!page || page.length === 0) break;
+    out.push(...page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+  return out;
+}
+
+// Realtime client
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
 /* ===================== PASSGATE ===================== */
 const PASS_PLAIN="TRIDENTHUB_portal", PASS_SALT="ideal-lab-trident-2025", PASS_ITER=150000;
 const PASS_HASH="089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
@@ -218,12 +228,14 @@ $("#unlock").addEventListener("click", async ()=>{
   $("#error").style.display="none";
   const dig = await hashPass($("#lockpw").value || "");
   if( (dig && dig===PASS_HASH) || (!dig && $("#lockpw").value===PASS_PLAIN) ){
-    UNLOCKED=true; $("#lock").hidden=true; renderSidebar(); await syncAll();
+    UNLOCKED=true; $("#lock").hidden=true; renderSidebar(); updateNewBtnLabel();
+    await syncAll();
+    wireRealtime(); // start live updates
   } else { $("#error").style.display="block"; }
 });
 
 /* ===================== NAV / COLUMNS / SCHEMAS ===================== */
-let currentView = "services";
+let currentView = "equipments";
 
 const COLUMNS = {
   contracts: [ "building_name","equipment_type","location_state","pma_no","pma_expiry","cf_validate","contract_type","contract_status","remark"],
@@ -236,7 +248,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","name","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -245,24 +257,24 @@ const COLUMNS = {
 
 const SCHEMAS = {
   contracts: [
-    {key:'building_name',      label:'Building name'},
-    {key:'brand',              label:'Brand'},
-    {key:'equipment_type',     label:'Equipment type'},
-    {key:'number_lift',        label:'Number of lifts'},
-    {key:'factory_code',       label:'Factory code'},
-    {key:'location_state',     label:'Location (state)'},
-    {key:'pma_no',             label:'PMA no'},
-    {key:'pma_expiry',         label:'PMA expiry (date)'},
-    {key:'cf_validate',        label:'CF validate (date)'},
-    {key:'rates_per_month',    label:'Rates / month'},
-    {key:'contract_type',      label:'Contract type'},
-    {key:'takeover_date',      label:'Takeover date'},
-    {key:'contract_start',     label:'Contract start'},
-    {key:'contract_end',       label:'Contract end'},
-    {key:'agreement_validity', label:'Agreement validity'},
-    {key:'service',            label:'Service'},
-    {key:'contract_status',    label:'Contract status'},
-    {key:'remark',             label:'Remark', type:'textarea'}
+    {key:'building_name',label:'Building name'},
+    {key:'brand',label:'Brand'},
+    {key:'equipment_type',label:'Equipment type'},
+    {key:'number_lift',label:'Number of lifts'},
+    {key:'factory_code',label:'Factory code'},
+    {key:'location_state',label:'Location (state)'},
+    {key:'pma_no',label:'PMA no'},
+    {key:'pma_expiry',label:'PMA expiry (date)'},
+    {key:'cf_validate',label:'CF validate (date)'},
+    {key:'rates_per_month',label:'Rates / month'},
+    {key:'contract_type',label:'Contract type'},
+    {key:'takeover_date',label:'Takeover date'},
+    {key:'contract_start',label:'Contract start'},
+    {key:'contract_end',label:'Contract end'},
+    {key:'agreement_validity',label:'Agreement validity'},
+    {key:'service',label:'Service'},
+    {key:'contract_status',label:'Contract status'},
+    {key:'remark',label:'Remark',type:'textarea'}
   ],
   task: [
     {key:'title',label:'Title',required:true},
@@ -296,89 +308,89 @@ const SCHEMAS = {
     {key:'check_out_at',label:'Check out at (ISO)'}
   ],
   equipments: [
-    { key:'type',                label:'Type' },
-    { key:'pma_no',              label:'PMA' },
-    { key:'name',                label:'Name' },
-    { key:'location',            label:'Location' },
-    { key:'brand',               label:'Brand' },
-    { key:'model_name',          label:'Model name' },
-    { key:'capacity_kg',         label:'Capacity (kg)' },
-    { key:'capacity_persons',    label:'Capacity (persons)' },
-    { key:'capacity_persons_per_hour', label:'Capacity (persons / hour)' },
-    { key:'speed_m/m',           label:'Speed (m/m)' },
-    { key:'rise_m',              label:'Rise (m)' },
-    { key:'stops_openings',      label:'Stops / Openings' },
-    { key:'stepwidth_mm',        label:'Step width (mm)' },
-    { key:'inclination',         label:'Inclination' },
-    { key:'machine_type',        label:'Machine type' },
-    { key:'motor_data',          label:'Motor data', type:'textarea' },
-    { key:'controller',          label:'Controller' },
-    { key:'software_version',    label:'Software version' },
-    { key:'operation',           label:'Operation' },
-    { key:'roping',              label:'Roping' },
-    { key:'rope_diameter',       label:'Rope diameter' },
-    { key:'rope_construction',   label:'Rope construction' },
-    { key:'pma_status',          label:'PMA status' },
-    { key:'pma_expiry',          label:'PMA expiry (date)' },
-    { key:'contract_status',     label:'Contract status' },
-    { key:'contract_expiry',     label:'Contract expiry (date)' }
+    {key:'type',label:'Type'},
+    {key:'pma_no',label:'PMA'},
+    {key:'name',label:'Name'},
+    {key:'location',label:'Location'},
+    {key:'brand',label:'Brand'},
+    {key:'model_name',label:'Model name'},
+    {key:'capacity_kg',label:'Capacity (kg)'},
+    {key:'capacity_persons',label:'Capacity (persons)'},
+    {key:'capacity_persons_per_hour',label:'Capacity (persons / hour)'},
+    {key:'speed_m/m',label:'Speed (m/m)'},
+    {key:'rise_m',label:'Rise (m)'},
+    {key:'stops_openings',label:'Stops / Openings'},
+    {key:'stepwidth_mm',label:'Step width (mm)'},
+    {key:'inclination',label:'Inclination'},
+    {key:'machine_type',label:'Machine type'},
+    {key:'motor_data',label:'Motor data',type:'textarea'},
+    {key:'controller',label:'Controller'},
+    {key:'software_version',label:'Software version'},
+    {key:'operation',label:'Operation'},
+    {key:'roping',label:'Roping'},
+    {key:'rope_diameter',label:'Rope diameter'},
+    {key:'rope_construction',label:'Rope construction'},
+    {key:'pma_status',label:'PMA status'},
+    {key:'pma_expiry',label:'PMA expiry (date)'},
+    {key:'contract_status',label:'Contract status'},
+    {key:'contract_expiry',label:'Contract expiry (date)'}
   ],
   sites: [
-    { key:'company_name', label:'Company Name' },
-    { key:'site_name',    label:'Site Name' },
-    { key:'site_address', label:'Site Address', type:'textarea' },
-    { key:'site_phone',   label:'Site Phone' },
-    { key:'site_email',   label:'Site Email' },
-    { key:'state',        label:'State' }
+    {key:'company_name',label:'Company Name'},
+    {key:'site_name',label:'Site Name'},
+    {key:'site_address',label:'Site Address',type:'textarea'},
+    {key:'site_phone',label:'Site Phone'},
+    {key:'site_email',label:'Site Email'},
+    {key:'state',label:'State'}
   ],
   inspection: [
-    {key:'title',         label:'Title'},
-    {key:'status',        label:'Status (open/in_progress/closed)'},
-    {key:'priority',      label:'Priority (low/normal/high/urgent)'},
-    {key:'assigned_to',   label:'Assigned to'},
-    {key:'location',      label:'Location'},
-    {key:'equipment_pma', label:'Equipment PMA'},
-    {key:'scheduled_at',  label:'Scheduled at (ISO)'},
-    {key:'started_at',    label:'Started at (ISO)'},
-    {key:'completed_at',  label:'Completed at (ISO)'},
-    {key:'result',        label:'Result (pass/fail/…)'},
+    {key:'title',label:'Title'},
+    {key:'status',label:'Status (open/in_progress/closed)'},
+    {key:'priority',label:'Priority (low/normal/high/urgent)'},
+    {key:'assigned_to',label:'Assigned to'},
+    {key:'location',label:'Location'},
+    {key:'equipment_pma',label:'Equipment PMA'},
+    {key:'scheduled_at',label:'Scheduled at (ISO)'},
+    {key:'started_at',label:'Started at (ISO)'},
+    {key:'completed_at',label:'Completed at (ISO)'},
+    {key:'result',label:'Result (pass/fail/…)'},
     {key:'certificate_no',label:'Certificate No.'},
-    {key:'pma_expiry',    label:'PMA expiry (date)'},
-    {key:'next_due',      label:'Next due (date)'},
-    {key:'remark',        label:'Remark', type:'textarea'}
+    {key:'pma_expiry',label:'PMA expiry (date)'},
+    {key:'next_due',label:'Next due (date)'},
+    {key:'remark',label:'Remark',type:'textarea'}
   ],
   hr: [
-    {key:"name",               label:"Name", required:true},
-    {key:"position",           label:"Position"},
-    {key:"phone",              label:"Phone"},
-    {key:"email",              label:"Email"},
-    {key:"employment_status",  label:"Employment Status"}
+    {key:"name",label:"Name",required:true},
+    {key:"position",label:"Position"},
+    {key:"phone",label:"Phone"},
+    {key:"email",label:"Email"},
+    {key:"employment_status",label:"Employment Status"}
   ],
   tools_mgmt: [
-    {key:"tool_name",      label:"Tool Name", required:true},
-    {key:"category",       label:"Category"},
-    {key:"serial_no",      label:"Serial No."},
-    {key:"status",         label:"Status"},
-    {key:"assigned_to",    label:"Assigned To"},
-    {key:"location",       label:"Location"},
+    {key:"tool_name",label:"Tool Name",required:true},
+    {key:"category",label:"Category"},
+    {key:"serial_no",label:"Serial No."},
+    {key:"status",label:"Status"},
+    {key:"assigned_to",label:"Assigned To"},
+    {key:"location",label:"Location"},
     {key:"calibration_due",label:"Calibration Due (date)"}
   ],
   sub_contractors: [
-    {key:"company_name",   label:"Company Name", required:true},
-    {key:"contact_person", label:"Contact Person"},
-    {key:"phone",          label:"Phone"},
-    {key:"email",          label:"Email"},
-    {key:"specialty",      label:"Specialty"},
-    {key:"status",         label:"Status"}
+    {key:"company_name",label:"Company Name",required:true},
+    {key:"contact_person",label:"Contact Person"},
+    {key:"phone",label:"Phone"},
+    {key:"email",label:"Email"},
+    {key:"specialty",label:"Specialty"},
+    {key:"status",label:"Status"}
   ],
   support: [
-    {key:"title",        label:"Title", required:true},
-    {key:"category",     label:"Category"},
-    {key:"priority",     label:"Priority (low/normal/high/urgent)"},
-    {key:"status",       label:"Status (open/in_progress/closed)"},
-    {key:"assigned_to",  label:"Assigned To"},
-    {key:"opened_at",    label:"Opened at (ISO)"},
-    {key:"remark",       label:"Remark", type:"textarea"}
+    {key:"title",label:"Title",required:true},
+    {key:"category",label:"Category"},
+    {key:"priority",label:"Priority (low/normal/high/urgent)"},
+    {key:"status",label:"Status (open/in_progress/closed)"},
+    {key:"assigned_to",label:"Assigned To"},
+    {key:"opened_at",label:"Opened at (ISO)"},
+    {key:"remark",label:"Remark",type:"textarea"}
   ],
 };
 
@@ -409,36 +421,6 @@ const NAV = [
   ]},
 ];
 
-/* ---- New: page→table mapping + CSV helpers + creation gate ---- */
-const TABLE_FOR_VIEW = {
-  contracts:"contracts",
-  services:"tasks", callbacks:"tasks", repairs:"tasks",
-  inspection_cf:"inspections", inspection_14th:"inspections",
-  sites:"sites", equipments:"equipments", attendance:"attendance",
-  checkins:"checkins", reports:"reports",
-  hr:"hr", tools_mgmt:"tools_mgmt", sub_contractors:"sub_contractors", support:"support"
-};
-
-const CSV_LABELS = {
-  building_name:"Building name", brand:"Brand", equipment_type:"Equipment type",
-  number_lift:"Number of lifts", factory_code:"Factory code", location_state:"Location (state)",
-  pma_no:"PMA No", pma_expiry:"PMA expiry", cf_validate:"CF validate",
-  contract_type:"Contract type", contract_status:"Contract status", remark:"Remark",
-  title:"Title", status:"Status", priority:"Priority", assigned_to:"Assigned to",
-  due_date:"Due date", location:"Location", equipment_pma:"Equipment PMA",
-  checked_in_at:"Checked in at", checked_out_at:"Checked out at",
-  scheduled_at:"Scheduled at", completed_at:"Completed at", certificate_no:"Certificate No",
-  created_at:"Created at", updated_at:"Updated at"
-};
-const DATE_KEYS = new Set([
-  "pma_expiry","cf_validate","due_date","checked_in_at","checked_out_at",
-  "scheduled_at","started_at","completed_at","contract_start","contract_end",
-  "contract_expiry","takeover_date","opened_at","calibration_due","created_at","updated_at"
-]);
-const VIEW_CAN_CREATE = new Set(Object.keys(SCHEMAS).concat([
-  "services","callbacks","repairs","inspection_cf","inspection_14th"
-]));
-
 /* Runtime store */
 const store = {
   tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[],
@@ -460,7 +442,6 @@ const SEARCHMAP = {
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status"],
   support: ["title","category","priority","status","assigned_to","remark"],
 };
-
 function buildOrFilter(q, cols) {
   const safe = encodeURIComponent(q);
   const pat  = `*${safe}*`;
@@ -469,7 +450,6 @@ function buildOrFilter(q, cols) {
   for (const c of exactCols) if (cols.includes(c)) parts.push(`${c}.eq.${safe}`);
   return `?or=(${parts.join(",")})&select=*&limit=100`;
 }
-
 (function wireSearchBox(){
   const qInput = document.getElementById('q');
   if(!qInput) return;
@@ -481,7 +461,6 @@ function buildOrFilter(q, cols) {
     }
   });
 })();
-
 function smallColsFor(table) {
   const base = {
     contracts: ["building_name","brand","equipment_type","pma_no","contract_type","contract_status","updated_at"],
@@ -513,7 +492,7 @@ async function globalSearch(q){
   if(!q || !UNLOCKED){ if(!UNLOCKED) toast("Unlock first"); return; }
   const requests = Object.entries(SEARCHMAP).map(async ([table, cols]) => {
     try {
-      return [table, await restSelect(table, buildOrFilter(q, cols)) || []];
+      return [table, await restSelectAll(table, buildOrFilter(q, cols)) || []];
     } catch (e) {
       console.warn("search error", table, e);
       return [table, []];
@@ -526,7 +505,7 @@ async function globalSearch(q){
     <form method="dialog" style="min-width:min(1100px,96vw)">
       <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h3 style="margin:0">Search results for “${q.replace(/</g,"&lt;")}”</h3>
-        <button class="btn secondary" value="close">Close</button>
+        <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
       <div id="searchBody"><div class="muted">Searching…</div></div>
     </form>`;
@@ -564,14 +543,19 @@ function renderSidebar(){
     </div>`;
   $$(".item", sb).forEach(el=> el.addEventListener("click", ()=> setActive(el.dataset.view)) );
 }
-function setActive(v){
-  currentView=v;
-  renderSidebar();
-  render();
-  refreshNewBtnState();  // keep +New contextual
+function setActive(v){ currentView=v; renderSidebar(); updateNewBtnLabel(); render(); }
+function updateNewBtnLabel(){
+  const map = {
+    services:'Service', callbacks:'Callback', repairs:'Repair',
+    equipments:'Equipments', contracts:'Contract', sites:'Site',
+    inspection_cf:'Inspection', inspection_14th:'Inspection',
+    hr:'Staff', tools_mgmt:'Tool', sub_contractors:'Sub-contractor',
+    support:'Support Ticket'
+  };
+  $("#newBtn").textContent = `+ New ${map[currentView]||''}`.trim();
 }
 
-/* ===================== FETCH ===================== */
+/* ===================== FETCH (ALL TABLES, ALL ROWS) ===================== */
 async function syncAll(){
   const safe = p => p.then(x=>x||[]).catch(e=>{console.warn(e); return []});
 
@@ -580,18 +564,18 @@ async function syncAll(){
     equipments, sites, inspections, hr, tools_mgmt,
     sub_contractors, support
   ] = await Promise.all([
-    safe(restSelect("contracts", "select=*")),
-    safe(restSelect("tasks", "select=*")),
-    safe(restSelect("attendance", "select=*")),
-    safe(restSelect("checkins", "select=*")),
-    safe(restSelect("reports", "select=*")),
-    safe(restSelect("equipments", "select=*")),
-    safe(restSelect("sites", "select=*")),
-    safe(restSelect("inspections", "select=*")),
-    safe(restSelect("hr", "select=*")),
-    safe(restSelect("tools_mgmt", "select=*")),
-    safe(restSelect("sub_contractors", "select=*")),
-    safe(restSelect("support", "select=*"))
+    safe(restSelectAll("contracts")),
+    safe(restSelectAll("tasks")),
+    safe(restSelectAll("attendance")),
+    safe(restSelectAll("checkins")),
+    safe(restSelectAll("reports")),
+    safe(restSelectAll("equipments")),
+    safe(restSelectAll("sites")),
+    safe(restSelectAll("inspections")),
+    safe(restSelectAll("hr")),
+    safe(restSelectAll("tools_mgmt")),
+    safe(restSelectAll("sub_contractors")),
+    safe(restSelectAll("support"))
   ]);
 
   store.contracts        = contracts;
@@ -638,12 +622,34 @@ function rowsFor(view){
   return [];
 }
 
+/* ===== PK helpers for robust delete ===== */
+function tableForView(view){
+  if (['services','callbacks','repairs'].includes(view)) return 'tasks';
+  if (['inspection_cf','inspection_14th'].includes(view)) return 'inspections';
+  return view;
+}
+function pkFor(view, row){
+  const table = tableForView(view);
+  if (row?.id != null) return { col: 'id', val: row.id };
+  if (table === 'equipments' && row?.pma_no != null)   return { col: 'pma_no', val: row.pma_no };
+  if (table === 'reports'    && row?.task_id != null)  return { col: 'task_id', val: row.task_id };
+  if (table === 'attendance' && row?.user_id != null)  return { col: 'user_id', val: row.user_id };
+  return { col: 'id', val: row?.id ?? '' };
+}
+function buildFilterQS(col, val){
+  const k = encodeURIComponent(col);
+  const v = encodeURIComponent(String(val));
+  return `?${k}=eq.${v}`;
+}
+
 function render(){
   if(!UNLOCKED){ $("#viewHost").innerHTML = '<div class="muted">Locked.</div>'; return; }
 
   const allRows = rowsFor(currentView);
   const cols    = COLUMNS[currentView] || [];
-  const rows    = PAGE_Q ? allRows.filter(r => rowMatches(r, PAGE_Q, cols)) : allRows;
+  const rows = PAGE_Q
+    ? allRows.filter(r => rowMatches(r, PAGE_Q, Object.keys(r || {})))
+    : allRows;
 
   const title = currentView.replace(/_/g,' ').replace(/^\w/,c=>c.toUpperCase());
   $("#title").textContent = title;
@@ -655,14 +661,15 @@ function render(){
 
   const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
   const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
-    const id = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
+    const pk = pkFor(currentView, r);
+    const domId = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
     const tds = cols.map(c=>`<td>${fmt(r[c])}</td>`).join('');
-    return `<tr data-id="${id}">
+    return `<tr data-id="${domId}" data-col="${pk.col}" data-val="${fmt(pk.val)}">
       ${tds}
       <td class="actions">
         <div class="lr">
-          <button class="btn secondary sm" data-edit="${id}">Edit</button>
-          <button class="btn danger sm" data-del="${id}">Del</button>
+          <button class="btn secondary sm" data-edit="${domId}">Edit</button>
+          <button class="btn danger sm" data-del="1" data-col="${pk.col}" data-val="${fmt(pk.val)}">Del</button>
         </div>
       </td>
     </tr>`;
@@ -670,7 +677,24 @@ function render(){
 
   $("#viewHost").innerHTML = `<table>${thead}${tbodyHtml}</table>`;
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
-  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
+
+  // NEW: column-aware delete
+  $("#viewHost").querySelectorAll('[data-del]').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      const col = b.dataset.col;
+      const val = b.dataset.val;
+      if(!col) return;
+      if(!confirm('Delete this record?')) return;
+      try{
+        await removeRow(currentView, { col, val });
+        toast('Deleted.');
+        await syncAll();
+      }catch(err){
+        console.error(err);
+        toast('Delete failed: ' + (err.message || err));
+      }
+    });
+  });
 
   // Row-click detail dialogs
   const tbodyEl = $("#viewHost table tbody");
@@ -685,7 +709,6 @@ function render(){
       if (id) showEquipmentDetails(id);
     });
   }
-
   if (currentView === "contracts") {
     tbodyEl.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
@@ -697,271 +720,7 @@ function render(){
   }
 }
 
-/* ===================== FORMS / CRUD ===================== */
-function fieldsFor(view){
-  if (["inspection_cf","inspection_14th"].includes(view)) return SCHEMAS.inspection;
-  if (["services","callbacks","repairs"].includes(view))   return SCHEMAS.task;
-  return SCHEMAS[view] || [];
-}
-function fieldHTML(f, val=""){
-  const id="f_"+f.key;
-  if(f.type==="textarea") return `<div style="grid-column:1/-1"><label for="${id}">${f.label}</label><textarea id="${id}">${fmt(val)}</textarea></div>`;
-  return `<div><label for="${id}">${f.label}${f.required?' *':''}</label><input id="${id}" value="${fmt(val)}"/></div>`;
-}
-function collectFrom(dlg, view){
-  const out={};
-  for(const f of fieldsFor(view)){
-    const el=dlg.querySelector("#f_"+f.key);
-    let v=(el?.value ?? "").trim();
-    if(f.required && !v){ el?.focus(); return null; }
-    out[f.key]= v===""?null:v;
-  }
-  return out;
-}
-
-function openForm(view, id){
-  const isTaskPage       = ["services","callbacks","repairs"].includes(view);
-  const isInspectionPage = ["inspection_cf","inspection_14th"].includes(view);
-
-  const source =
-    view==="contracts"   ? store.contracts   :
-    isTaskPage           ? store.tasks       :
-    isInspectionPage     ? store.inspections :
-    view==="attendance"  ? store.attendance  :
-    view==="checkins"    ? store.checkins    :
-    view==="reports"     ? store.reports     :
-    view==="sites"       ? store.sites       :
-    view==="equipments"  ? store.equipments  : [];
-
-  const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
-  const dlg = document.createElement("dialog");
-  dlg.innerHTML = `<form method="dialog">
-    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
-      <button class="btn secondary" value="close">✕</button>
-    </header>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
-      ${fieldsFor(view).map(f=> fieldHTML(f, row[f.key]) ).join('')}
-    </div>
-    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
-      <div>${ id ? `<button class="btn danger" id="delBtn">Delete</button>` : '' }</div>
-      <div>
-        <button class="btn secondary" value="close">Cancel</button>
-        <button class="btn" id="saveBtn" value="default">${id?'Save':'Create'}</button>
-      </div>
-    </div>
-  </form>`;
-  document.body.appendChild(dlg); dlg.showModal();
-  dlg.addEventListener("close", ()=> dlg.remove());
-
-  $("#saveBtn", dlg)?.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    const payload = collectFrom(dlg, view); if(!payload) return;
-    try{
-      if(id) await updateRow(view, id, payload);
-      else   await addRow(view, payload);
-      await syncAll(); dlg.close();
-    }catch(err){ toast(err.message); }
-  });
-
-  $("#delBtn", dlg)?.addEventListener("click", async (e)=>{
-    e.preventDefault();
-    if(confirm("Delete this record?")){
-      try{ await removeRow(view, id); await syncAll(); dlg.close(); }
-      catch(err){ toast(err.message); }
-    }
-  });
-}
-
-function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
-
-async function addRow(view, payload){
-  if (["inspection_cf","inspection_14th"].includes(view)) {
-    payload.subtype = (view === "inspection_cf") ? "cf_renewal" : "schedule_14th";
-    await restInsert("inspections", payload);
-  } else if (["services","callbacks","repairs"].includes(view)) {
-    payload.type = (view==="services")?"service":(view==="callbacks")?"callback":"repair";
-    await restInsert("tasks", payload);
-  } else {
-    await restInsert(view, payload);
-  }
-}
-async function updateRow(view, id, patch){
-  const qs = idFilter(id);
-  if (["inspection_cf","inspection_14th"].includes(view)) {
-    await restUpdate("inspections", qs, patch);
-  } else if (["services","callbacks","repairs"].includes(view)) {
-    await restUpdate("tasks", qs, patch);
-  } else {
-    await restUpdate(view, qs, patch);
-  }
-}
-async function removeRow(view, id){
-  const qs = idFilter(id);
-  if (["inspection_cf","inspection_14th"].includes(view)) {
-    await restDelete("inspections", qs);
-  } else if (["services","callbacks","repairs"].includes(view)) {
-    await restDelete("tasks", qs);
-  } else {
-    await restDelete(view, qs);
-  }
-}
-
-/* ===================== CSV IMPORT / EXPORT ===================== */
-function parseCSV(text){
-  const out=[]; let row=[], field='', i=0, q=false;
-  while(i<=text.length){
-    const c = text[i] ?? '\n';
-    if(q){
-      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else q=false; }
-      else field+=c;
-    }else{
-      if(c === '"') q=true;
-      else if(c === ','){ row.push(field); field=''; }
-      else if(c === '\r'){ /* ignore */ }
-      else if(c === '\n'){ row.push(field); out.push(row); row=[]; field=''; }
-      else field+=c;
-    }
-    i++;
-  }
-  while(out.length && out[out.length-1].length===1 && out[out.length-1][0]==='') out.pop();
-  return out;
-}
-function viewToTable(view){
-  return TABLE_FOR_VIEW[view] || view;
-}
-function normalizeKey(s){ return String(s||'').trim().toLowerCase().replace(/[\s\-]+/g,'_'); }
-function allowedKeysFor(view){ return new Set((fieldsFor(view)||[]).map(f=>f.key).concat(["id"])); }
-function rowsToPayloads(view, header, rows){
-  const allowed = allowedKeysFor(view);
-  const keys = header.map(normalizeKey);
-  const out=[];
-  for(const r of rows){
-    const o={};
-    for(let i=0;i<keys.length;i++){
-      const k=keys[i]; if(!k || !allowed.has(k)) continue;
-      const v=r[i] ?? '';
-      o[k]= v===''?null:v;
-    }
-    if(Object.keys(o).length) out.push(o);
-  }
-  return out;
-}
-async function importCsvForCurrentView(file){
-  const table = viewToTable(currentView);
-  const text = await file.text();
-  const rows = parseCSV(text);
-  if(!rows.length){ toast("CSV: no rows"); return; }
-  const header = rows[0];
-  const payloads = rowsToPayloads(currentView, header, rows.slice(1));
-  if(!payloads.length){ toast("CSV: no valid data columns"); return; }
-
-  const hasId = header.map(normalizeKey).includes('id');
-  const onConflict = hasId ? "?on_conflict=id" : "";
-  const prefer = hasId ? "return=representation,resolution=merge-duplicates" : "return=representation";
-
-  const CHUNK=500; let done=0;
-  for(let i=0;i<payloads.length;i+=CHUNK){
-    const batch=payloads.slice(i,i+CHUNK);
-    await restFetch(`/${table}${onConflict}`, { method:'POST', body:batch, prefer });
-    done+=batch.length;
-  }
-  toast(`Imported ${done} row(s) into ${table}${hasId?' (upsert)':''}.`);
-  await syncAll();
-}
-$("#importCsv").addEventListener("click", ()=>{
-  if(!UNLOCKED){ toast("Unlock first"); return; }
-  $("#csvFile").value=""; $("#csvFile").click();
-});
-$("#csvFile").addEventListener("change",(e)=>{
-  const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
-});
-
-/* ---- CSV export helpers ---- */
-function csvEscape(v) {
-  const s = v == null ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-}
-function rowToCsv(row, keys) {
-  return keys.map(k => {
-    const raw = row?.[k];
-    const val = DATE_KEYS.has(k) ? formatDateSafe(raw) : (raw ?? "");
-    return csvEscape(val);
-  }).join(",");
-}
-function getVisibleRowsAndColumns() {
-  const all = rowsFor(currentView) || [];
-  const cols = COLUMNS[currentView] || [];
-  const rows = PAGE_Q ? all.filter(r => rowMatches(r, PAGE_Q, cols)) : all;
-  return { rows, cols };
-}
-document.getElementById("exportCsv").onclick = () => {
-  if (!UNLOCKED) { toast("Unlock first"); return; }
-
-  const { rows, cols } = getVisibleRowsAndColumns();
-  if (!rows.length) { toast("Nothing to export"); return; }
-
-  const header = cols.map(k => csvEscape(CSV_LABELS[k] || k)).join(",");
-  const data   = rows.map(r => rowToCsv(r, cols)).join("\n");
-  const csv    = [header, data].filter(Boolean).join("\n");
-
-  const ts      = new Date().toISOString().slice(0,10);
-  const suffix  = PAGE_Q ? "-filtered" : "";
-  const fname   = `${currentView}${suffix}-${ts}.csv`;
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fname;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-
-/* ---- + New contextual ---- */
-const newBtn = document.getElementById("newBtn");
-function refreshNewBtnState() {
-  const can = VIEW_CAN_CREATE.has(currentView);
-  newBtn.disabled = !can;
-  newBtn.title = can ? "" : "Creation is not available on this page";
-  const viewName = currentView.replace(/_/g," ");
-  newBtn.textContent = can ? `+ New ${viewName[0].toUpperCase()+viewName.slice(1)}` : "+ New";
-}
-newBtn.onclick = () => {
-  if (!UNLOCKED) { toast("Unlock first"); return; }
-  if (!VIEW_CAN_CREATE.has(currentView)) { toast("Creation not available on this page."); return; }
-  openForm(currentView, null);
-};
-
-/* ===================== DETAILS DIALOGS ===================== */
-const EQUIPMENT_DETAIL_FIELDS = [
-   "type","pma_no","name","location",
-  "brand","model_name",
-  "capacity_kg","capacity_persons","capacity_persons_per_hour",
-  "speed_m/m","rise_m","stops_openings",
-  "stepwidth_mm","inclination","machine_type","motor_data","controller","software_version",
-  "operation","roping","rope_diameter","rope_construction",
-  "pma_status","pma_expiry","contract_status","contract_expiry",
-  "created_at","updated_at"
-];
-
-const CONTRACT_DETAIL_FIELDS = [
-  "id",
-  "building_name","brand","equipment_type","number_lift",
-  "factory_code","location_state",
-  "pma_no","pma_expiry","cf_validate",
-  "rates_per_month","contract_type",
-  "takeover_date","contract_start","contract_end",
-  "agreement_validity","service","contract_status","remark",
-  "created_at","updated_at"
-];
-
-const fDate = (v) => v ? new Date(v).toISOString().slice(0,10) : "";
-const daysLeft = (v) => {
-  if (!v) return null;
-  const d = (new Date(v) - new Date()) / 86400000;
-  return Math.round(d);
-};
-
+/* ===================== DATE & NUMBER SANITIZERS ===================== */
 function parseAnyDate(val) {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val) ? null : val;
@@ -971,6 +730,7 @@ function parseAnyDate(val) {
   }
   const s = String(val).trim();
   if (!s) return null;
+
   const native = new Date(s);
   if (!isNaN(native)) return native;
 
@@ -998,6 +758,301 @@ function parseAnyDate(val) {
   }
   return null;
 }
+function isoDateOrNull(v){
+  const d = parseAnyDate(v);
+  return d ? d.toISOString().slice(0,10) : null;
+}
+const DATE_FIELDS = {
+  contracts: ['pma_expiry','cf_validate','takeover_date','contract_start','contract_end','agreement_validity'],
+  tasks:     ['due_date','checked_in_at','checked_out_at'],
+  inspections:['scheduled_at','started_at','completed_at','pma_expiry','next_due'],
+  equipments:['pma_expiry','contract_expiry'],
+  sites:     [], hr:[], tools_mgmt:['calibration_due'], sub_contractors:[], support:['opened_at']
+};
+const NUMBER_FIELDS = {
+  equipments: ['capacity_kg','capacity_persons','capacity_persons_per_hour','rise_m','stepwidth_mm','inclination','stops_openings']
+};
+function sanitizePayloadForTable(table, obj){
+  const dates = new Set(DATE_FIELDS[table] || []);
+  const nums  = new Set((NUMBER_FIELDS[table] || []).map(String));
+  const out   = {};
+  for (const [k,raw] of Object.entries(obj)){
+    let v = typeof raw === 'string' ? raw.trim() : raw;
+    if (v === '' || v === undefined) { out[k] = null; continue; }
+    if (dates.has(k))     { out[k] = isoDateOrNull(v); continue; }
+    if (nums.has(k))      { const n = Number(v); out[k] = Number.isFinite(n) ? n : null; continue; }
+    out[k] = v;
+  }
+  return out;
+}
+
+/* ===================== FORMS / CRUD ===================== */
+function fieldsFor(view){
+  if (["inspection_cf","inspection_14th"].includes(view)) return SCHEMAS.inspection;
+  if (["services","callbacks","repairs"].includes(view))   return SCHEMAS.task;
+  return SCHEMAS[view] || [];
+}
+function fieldHTML(f, val=""){
+  const id="f_"+f.key;
+  if(f.type==="textarea") return `<div style="grid-column:1/-1"><label for="${id}">${f.label}</label><textarea id="${id}">${fmt(val)}</textarea></div>`;
+  return `<div><label for="${id}">${f.label}${f.required?' *':''}</label><input id="${id}" value="${fmt(val)}"/></div>`;
+}
+function collectFrom(dlg, view){
+  const out = {};
+  for (const f of fieldsFor(view)) {
+    const el = byId(dlg, 'f_' + f.key);
+    let v = (el?.value ?? "").trim();
+    if (f.required && !v) { el?.focus(); return null; }
+    out[f.key] = v === "" ? null : v;
+  }
+  return out;
+}
+
+function openForm(view, id){
+  const isTaskPage       = ["services","callbacks","repairs"].includes(view);
+  const isInspectionPage = ["inspection_cf","inspection_14th"].includes(view);
+
+  const source =
+    view==="contracts"   ? store.contracts   :
+    isTaskPage           ? store.tasks       :
+    isInspectionPage     ? store.inspections :
+    view==="attendance"  ? store.attendance  :
+    view==="checkins"    ? store.checkins    :
+    view==="reports"     ? store.reports     :
+    view==="sites"       ? store.sites       :
+    view==="equipments"  ? store.equipments  : [];
+
+  const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
+  const dlg = document.createElement("dialog");
+  dlg.innerHTML = `<form method="dialog">
+    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
+      <button class="btn secondary" value="close" type="submit">✕</button>
+    </header>
+    <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
+      ${fieldsFor(view).map(f=> fieldHTML(f, row[f.key]) ).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
+      <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : '' }</div>
+      <div>
+        <button class="btn secondary" value="close" type="submit">Cancel</button>
+        <button class="btn" id="saveBtn" type="button">${id?'Save':'Create'}</button>
+      </div>
+    </div>
+  </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  $("#saveBtn", dlg)?.addEventListener("click", async ()=>{
+    try{
+      const payload = collectFrom(dlg, view);
+      if(!payload) return;
+      if(id) await updateRow(view, id, payload);
+      else   await addRow(view, payload);
+      await syncAll(); dlg.close();
+      toast(id ? "Saved." : "Created.");
+    }catch(err){ console.error(err); toast(`Error: ${err.message||err}`); }
+  });
+
+  // Use column-aware delete inside dialog too
+  $("#delBtn", dlg)?.addEventListener("click", async ()=>{
+    if(confirm("Delete this record?")){
+      try{
+        const pk = pkFor(view, row);
+        await removeRow(view, pk);
+        await syncAll(); dlg.close();
+      }catch(err){ toast(`Error: ${err.message||err}`); }
+    }
+  });
+}
+
+function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
+
+async function addRow(view, payload){
+  if (view === 'inspection_cf')  payload.subtype = 'cf_renewal';
+  if (view === 'inspection_14th')payload.subtype = 'schedule_14th';
+  if (['services','callbacks','repairs'].includes(view)){
+    payload.type = view === 'services' ? 'service' : view === 'callbacks' ? 'callback' : 'repair';
+  }
+  const table   = tableForView(view);
+  const clean   = sanitizePayloadForTable(table, payload);
+  await restInsert(table, clean);
+}
+async function updateRow(view, id, patch){
+  const table = tableForView(view);
+  const qs    = idFilter(id);
+  const clean = sanitizePayloadForTable(table, patch);
+  await restUpdate(table, qs, clean);
+}
+
+// UPDATED: column-aware delete
+async function removeRow(view, pk){
+  // pk = { col, val }
+  const table = tableForView(view);
+  const qs = buildFilterQS(pk.col, pk.val);
+  await restDelete(table, qs);
+}
+
+/* ===================== CSV IMPORT/EXPORT ===================== */
+function parseCSV(text){
+  const out=[]; let row=[], field='', i=0, q=false;
+  while(i<=text.length){
+    const c = text[i] ?? '\n';
+    if(q){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else q=false; }
+      else field+=c;
+    }else{
+      if(c === '"') q=true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* ignore */ }
+      else if(c === '\n'){ row.push(field); out.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+    i++;
+  }
+  while(out.length && out[out.length-1].length===1 && out[out.length-1][0]==='') out.pop();
+  return out;
+}
+function viewToTable(view){
+  if (["services","callbacks","repairs"].includes(view)) return "tasks";
+  if (["inspection_cf","inspection_14th"].includes(view)) return "inspections";
+  return view;
+}
+function normalizeKey(s){ return String(s||'').trim().toLowerCase().replace(/[\s\-\/]+/g,'_'); }
+function allowedKeysFor(view){ return new Set((fieldsFor(view)||[]).map(f=>f.key).concat(["id"])); }
+function rowsToPayloads(view, header, rows){
+  const allowed = allowedKeysFor(view);
+  const keys = header.map(normalizeKey);
+  const out=[];
+  for(const r of rows){
+    const o={};
+    for(let i=0;i<keys.length;i++){
+      const k=keys[i]; if(!k || !allowed.has(k)) continue;
+      const v=r[i] ?? '';
+      o[k]= v===''?null:v;
+    }
+    if(Object.keys(o).length) out.push(o);
+  }
+  return out;
+}
+async function importCsvForCurrentView(file){
+  const table = viewToTable(currentView);
+  const text = await file.text();
+  const rows = parseCSV(text);
+  if(!rows.length){ toast("CSV: no rows"); return; }
+  const header = rows[0];
+  const payloadsRaw = rowsToPayloads(currentView, header, rows.slice(1));
+  const payloads    = payloadsRaw.map(p => sanitizePayloadForTable(table, p));
+  if(!payloads.length){ toast("CSV: no valid data columns"); return; }
+
+  const hasId = header.map(normalizeKey).includes('id');
+  const onConflict = hasId ? "?on_conflict=id" : "";
+  const prefer = hasId ? "return=representation,resolution=merge-duplicates" : "return=representation";
+
+  const CHUNK=500; let done=0;
+  for(let i=0;i<payloads.length;i+=CHUNK){
+    const batch=payloads.slice(i,i+CHUNK);
+    await restFetch(`/${table}${onConflict}`, { method:'POST', body:batch, prefer });
+    done+=batch.length;
+  }
+  toast(`Imported ${done} row(s) into ${table}${hasId?' (upsert)':''}.`);
+  await syncAll();
+}
+$("#importCsv").addEventListener("click", ()=>{
+  if(!UNLOCKED){ toast("Unlock first"); return; }
+  $("#csvFile").value=""; $("#csvFile").click();
+});
+$("#csvFile").addEventListener("change",(e)=>{
+  const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
+});
+
+$("#exportCsv").addEventListener("click", ()=>{
+  if(!UNLOCKED){ toast("Unlock first"); return; }
+  const table = $("#viewHost table"); if(!table){ toast("Nothing to export"); return; }
+  const header = Array.from(table.querySelectorAll("thead th")).slice(0,-1).map(th=>th.textContent).join(",");
+  const rows = Array.from(table.querySelectorAll("tbody tr")).map(tr =>
+    Array.from(tr.querySelectorAll("td")).slice(0,-1).map(td=> `"${(td.textContent||'').replace(/"/g,'""')}"`).join(",")
+  );
+  const csv = [header, ...rows].join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `${currentView}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ===================== REALTIME (live updates) ===================== */
+const RT_TABLES = [
+  "contracts","equipments","tasks","inspections","sites",
+  "reports","attendance","checkins","hr","tools_mgmt","sub_contractors","support"
+];
+function primaryKeyFor(table, row) {
+  if (row?.id != null) return String(row.id);
+  if (table === "equipments")  return String(row?.id ?? row?.pma_no ?? "");
+  if (table === "contracts")   return String(row?.id ?? row?.pma_no ?? "");
+  if (table === "reports")     return String(row?.id ?? row?.task_id ?? "");
+  if (table === "attendance")  return String(row?.id ?? row?.user_id ?? "");
+  return String(row?.id ?? row?.pma_no ?? row?.task_id ?? row?.user_id ?? "");
+}
+function applyChangeToStore(table, eventType, newRow, oldRow) {
+  const key = table;
+  const arr = store[key] || (store[key] = []);
+  const newK = newRow ? primaryKeyFor(table, newRow) : "";
+  const oldK = oldRow ? primaryKeyFor(table, oldRow) : newK;
+  const idx  = arr.findIndex(r => primaryKeyFor(table, r) === oldK);
+
+  if (eventType === "INSERT") {
+    if (idx === -1) arr.unshift(newRow); else arr[idx] = newRow;
+  } else if (eventType === "UPDATE") {
+    if (idx !== -1) arr[idx] = {...arr[idx], ...newRow};
+    else arr.unshift(newRow);
+  } else if (eventType === "DELETE") {
+    if (idx !== -1) arr.splice(idx, 1);
+  }
+}
+const rerender = (() => { let t; return () => { clearTimeout(t); t=setTimeout(render, 80); }; })();
+async function resyncTable(table) {
+  try { store[table] = (await restSelectAll(table)) || []; rerender(); }
+  catch (e) { console.warn("resync fail", table, e); }
+}
+function wireRealtime() {
+  const ch = supa.channel("portal-realtime");
+
+  RT_TABLES.forEach(table => {
+    ch.on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
+      const { eventType, new: n, old: o } = payload;
+      applyChangeToStore(table, eventType, n, o);
+      rerender();
+    });
+  });
+
+  ch.subscribe((status) => {
+    if (status === "SUBSCRIBED")       console.log("[Realtime] live");
+    else if (status === "CHANNEL_ERROR") console.warn("[Realtime] error");
+    else if (status === "CLOSED")        console.warn("[Realtime] closed");
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      const t = viewToTable(currentView);
+      if (t) resyncTable(t);
+    }
+  });
+}
+
+/* ===================== DETAILS DIALOGS ===================== */
+const EQUIPMENT_DETAIL_FIELDS = [
+  "type","pma_no","name","location","brand","model_name",
+  "capacity_kg","capacity_persons","capacity_persons_per_hour",
+  "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
+  "machine_type","motor_data","controller","software_version","operation",
+  "roping","rope_diameter","rope_construction",
+  "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
+];
+const CONTRACT_DETAIL_FIELDS = [
+  "id","building_name","brand","equipment_type","number_lift","factory_code","location_state",
+  "pma_no","pma_expiry","cf_validate","rates_per_month","contract_type",
+  "takeover_date","contract_start","contract_end","agreement_validity","service",
+  "contract_status","remark","created_at","updated_at"
+];
 function formatDateSafe(val) {
   const d = parseAnyDate(val);
   return d ? d.toISOString().slice(0, 10) : String(val ?? "");
@@ -1010,14 +1065,9 @@ function daysLeftSafe(val) {
   const T = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   return Math.round((D - T) / 86400000);
 }
-
 function kvGrid(obj, keys) {
-  const dateKeys = new Set([
-    "pma_expiry","cf_validate","takeover_date","contract_start","contract_end",
-    "agreement_validity","created_at","updated_at"
-  ]);
+  const dateKeys = new Set(["pma_expiry","cf_validate","takeover_date","contract_start","contract_end","agreement_validity","created_at","updated_at"]);
   const badgeKeys = new Set(["pma_expiry","contract_end"]);
-
   return `
     <div style="display:grid;grid-template-columns: 220px 1fr; gap:10px;">
       ${keys.map(k => {
@@ -1062,7 +1112,7 @@ async function showEquipmentDetails(equipId){
     <form method="dialog" style="min-width:min(980px,96vw)">
       <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h3 style="margin:0">Equipment details</h3>
-        <button class="btn secondary" value="close">Close</button>
+        <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
       <div id="equipBody"><div class="muted">Loading…</div></div>
     </form>`;
@@ -1070,12 +1120,12 @@ async function showEquipmentDetails(equipId){
   dlg.addEventListener("close", ()=> dlg.remove());
 
   try {
-    const [eq] = await restSelect("equipments", `?id=eq.${encodeURIComponent(equipId)}&select=*`);
+    const [eq] = await restSelectAll("equipments", `?id=eq.${encodeURIComponent(equipId)}`);
     if (!eq) { $("#equipBody", dlg).innerHTML = `<div class="muted">Equipment not found.</div>`; return; }
     const pma = eq.pma_no ?? eq.pma ?? null;
 
-    const tasks   = pma ? await restSelect("tasks",   `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
-    const reports = pma ? await restSelect("reports", `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&limit=20`) : [];
+    const tasks   = pma ? await restSelectAll("tasks",   `?equipment_pma=eq.${encodeURIComponent(pma)}`) : [];
+    const reports = pma ? await restSelectAll("reports", `?equipment_pma=eq.${encodeURIComponent(pma)}`) : [];
 
     const taskHeaders    = [ "title","type","status","priority","assigned_to","due_date","updated_at","created_at","completed_at"];
     const reportHeaders  = [ "title","remark","created_at","check_in_at","check_out_at"];
@@ -1098,7 +1148,6 @@ async function showEquipmentDetails(equipId){
     $("#equipBody", dlg).innerHTML = `<div class="muted">Error: ${fmt(err.message)}</div>`;
   }
 }
-
 async function showContractDetails(contractId){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
@@ -1106,7 +1155,7 @@ async function showContractDetails(contractId){
     <form method="dialog" style="min-width:min(980px,96vw)">
       <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h3 style="margin:0">Contract details</h3>
-        <button class="btn secondary" value="close">Close</button>
+        <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
       <div id="contractBody"><div class="muted">Loading…</div></div>
     </form>`;
@@ -1114,12 +1163,12 @@ async function showContractDetails(contractId){
   dlg.addEventListener("close", ()=> dlg.remove());
 
   try {
-    const [c] = await restSelect("contracts", `?id=eq.${encodeURIComponent(contractId)}&select=*`);
+    const [c] = await restSelectAll("contracts", `?id=eq.${encodeURIComponent(contractId)}`);
     if (!c) { $("#contractBody", dlg).innerHTML = `<div class="muted">Contract not found.</div>`; return; }
 
     const pma = c.pma_no ?? null;
-    const equipment = pma ? (await restSelect("equipments", `?pma_no=eq.${encodeURIComponent(pma)}&select=*`))[0] : null;
-    const tasks = pma ? await restSelect("tasks", `?equipment_pma=eq.${encodeURIComponent(pma)}&select=*&order=created_at.desc&limit=20`) : [];
+    const equipment = pma ? (await restSelectAll("equipments", `?pma_no=eq.${encodeURIComponent(pma)}`))[0] : null;
+    const tasks = pma ? await restSelectAll("tasks", `?equipment_pma=eq.${encodeURIComponent(pma)}&order=created_at.desc`) : [];
 
     const taskHeaders = ["title","type","status","priority","assigned_to","due_date","updated_at"];
     const equipHeaders = ["type","name","brand","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
@@ -1148,11 +1197,10 @@ async function showContractDetails(contractId){
 /* ===================== INIT ===================== */
 renderSidebar();
 wirePageSearch();
+updateNewBtnLabel();
 document.addEventListener("keydown", e=>{
   if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); $("#q").focus(); }
 });
-
-// Global search shortcuts (Enter/Escape)
 const qInput = $("#q");
 qInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
@@ -1164,9 +1212,7 @@ qInput.addEventListener("keydown", (e) => {
     qInput.value = "";
   }
 });
-
-// set initial state of "+ New" button
-refreshNewBtnState();
+$("#newBtn").addEventListener("click", ()=> openForm(currentView, null) );
 </script>
 </body>
 </html>
