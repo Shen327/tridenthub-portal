@@ -37,6 +37,7 @@
     .btn.secondary{background:rgba(255,255,255,.06);border-color:#475569;color:#e5e7eb}
     .btn.danger{background:#b91c1c;border-color:#b91c1c}
     .btn.sm { padding:.38rem .6rem; border-radius:10px; font-weight:600; }
+    .btn:disabled{opacity:.5; cursor:not-allowed}
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top}
     th{font-size:12px;color:var(--fg2)}
@@ -408,6 +409,36 @@ const NAV = [
   ]},
 ];
 
+/* ---- New: page→table mapping + CSV helpers + creation gate ---- */
+const TABLE_FOR_VIEW = {
+  contracts:"contracts",
+  services:"tasks", callbacks:"tasks", repairs:"tasks",
+  inspection_cf:"inspections", inspection_14th:"inspections",
+  sites:"sites", equipments:"equipments", attendance:"attendance",
+  checkins:"checkins", reports:"reports",
+  hr:"hr", tools_mgmt:"tools_mgmt", sub_contractors:"sub_contractors", support:"support"
+};
+
+const CSV_LABELS = {
+  building_name:"Building name", brand:"Brand", equipment_type:"Equipment type",
+  number_lift:"Number of lifts", factory_code:"Factory code", location_state:"Location (state)",
+  pma_no:"PMA No", pma_expiry:"PMA expiry", cf_validate:"CF validate",
+  contract_type:"Contract type", contract_status:"Contract status", remark:"Remark",
+  title:"Title", status:"Status", priority:"Priority", assigned_to:"Assigned to",
+  due_date:"Due date", location:"Location", equipment_pma:"Equipment PMA",
+  checked_in_at:"Checked in at", checked_out_at:"Checked out at",
+  scheduled_at:"Scheduled at", completed_at:"Completed at", certificate_no:"Certificate No",
+  created_at:"Created at", updated_at:"Updated at"
+};
+const DATE_KEYS = new Set([
+  "pma_expiry","cf_validate","due_date","checked_in_at","checked_out_at",
+  "scheduled_at","started_at","completed_at","contract_start","contract_end",
+  "contract_expiry","takeover_date","opened_at","calibration_due","created_at","updated_at"
+]);
+const VIEW_CAN_CREATE = new Set(Object.keys(SCHEMAS).concat([
+  "services","callbacks","repairs","inspection_cf","inspection_14th"
+]));
+
 /* Runtime store */
 const store = {
   tasks:[], attendance:[], checkins:[], reports:[], equipments:[], sites:[], inspections:[],
@@ -533,7 +564,12 @@ function renderSidebar(){
     </div>`;
   $$(".item", sb).forEach(el=> el.addEventListener("click", ()=> setActive(el.dataset.view)) );
 }
-function setActive(v){ currentView=v; renderSidebar(); render(); }
+function setActive(v){
+  currentView=v;
+  renderSidebar();
+  render();
+  refreshNewBtnState();  // keep +New contextual
+}
 
 /* ===================== FETCH ===================== */
 async function syncAll(){
@@ -771,7 +807,7 @@ async function removeRow(view, id){
   }
 }
 
-/* ===================== CSV IMPORT ===================== */
+/* ===================== CSV IMPORT / EXPORT ===================== */
 function parseCSV(text){
   const out=[]; let row=[], field='', i=0, q=false;
   while(i<=text.length){
@@ -792,9 +828,7 @@ function parseCSV(text){
   return out;
 }
 function viewToTable(view){
-  if (["services","callbacks","repairs"].includes(view)) return "tasks";
-  if (["inspection_cf","inspection_14th"].includes(view)) return "inspections";
-  return view;
+  return TABLE_FOR_VIEW[view] || view;
 }
 function normalizeKey(s){ return String(s||'').trim().toLowerCase().replace(/[\s\-]+/g,'_'); }
 function allowedKeysFor(view){ return new Set((fieldsFor(view)||[]).map(f=>f.key).concat(["id"])); }
@@ -843,6 +877,61 @@ $("#csvFile").addEventListener("change",(e)=>{
   const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
 });
 
+/* ---- CSV export helpers ---- */
+function csvEscape(v) {
+  const s = v == null ? "" : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+}
+function rowToCsv(row, keys) {
+  return keys.map(k => {
+    const raw = row?.[k];
+    const val = DATE_KEYS.has(k) ? formatDateSafe(raw) : (raw ?? "");
+    return csvEscape(val);
+  }).join(",");
+}
+function getVisibleRowsAndColumns() {
+  const all = rowsFor(currentView) || [];
+  const cols = COLUMNS[currentView] || [];
+  const rows = PAGE_Q ? all.filter(r => rowMatches(r, PAGE_Q, cols)) : all;
+  return { rows, cols };
+}
+document.getElementById("exportCsv").onclick = () => {
+  if (!UNLOCKED) { toast("Unlock first"); return; }
+
+  const { rows, cols } = getVisibleRowsAndColumns();
+  if (!rows.length) { toast("Nothing to export"); return; }
+
+  const header = cols.map(k => csvEscape(CSV_LABELS[k] || k)).join(",");
+  const data   = rows.map(r => rowToCsv(r, cols)).join("\n");
+  const csv    = [header, data].filter(Boolean).join("\n");
+
+  const ts      = new Date().toISOString().slice(0,10);
+  const suffix  = PAGE_Q ? "-filtered" : "";
+  const fname   = `${currentView}${suffix}-${ts}.csv`;
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+/* ---- + New contextual ---- */
+const newBtn = document.getElementById("newBtn");
+function refreshNewBtnState() {
+  const can = VIEW_CAN_CREATE.has(currentView);
+  newBtn.disabled = !can;
+  newBtn.title = can ? "" : "Creation is not available on this page";
+  const viewName = currentView.replace(/_/g," ");
+  newBtn.textContent = can ? `+ New ${viewName[0].toUpperCase()+viewName.slice(1)}` : "+ New";
+}
+newBtn.onclick = () => {
+  if (!UNLOCKED) { toast("Unlock first"); return; }
+  if (!VIEW_CAN_CREATE.has(currentView)) { toast("Creation not available on this page."); return; }
+  openForm(currentView, null);
+};
+
 /* ===================== DETAILS DIALOGS ===================== */
 const EQUIPMENT_DETAIL_FIELDS = [
    "type","pma_no","name","location",
@@ -875,24 +964,16 @@ const daysLeft = (v) => {
 
 function parseAnyDate(val) {
   if (!val) return null;
-
-  // Already a Date?
   if (val instanceof Date) return isNaN(val) ? null : val;
-
-  // Numbers (epoch ms)
   if (typeof val === "number") {
     const d = new Date(val);
     return isNaN(d) ? null : d;
   }
-
   const s = String(val).trim();
   if (!s) return null;
-
-  // ISO / yyyy-mm-dd (or anything Date can natively read)
   const native = new Date(s);
   if (!isNaN(native)) return native;
 
-  // dd-MMM-yy or dd-MMM-yyyy (e.g., 27-Feb-26, 30-Oct-2025)
   const m1 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
   if (m1) {
     const day = parseInt(m1[1], 10);
@@ -901,13 +982,11 @@ function parseAnyDate(val) {
     const months = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
     const mm = months[mon];
     if (mm != null) {
-      if (year < 100) year = year < 50 ? 2000 + year : 1900 + year; // pivot
+      if (year < 100) year = year < 50 ? 2000 + year : 1900 + year;
       const d = new Date(Date.UTC(year, mm, day));
       return isNaN(d) ? null : d;
     }
   }
-
-  // dd/MM/yyyy or dd/MM/yy
   const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
   if (m2) {
     const day = parseInt(m2[1], 10);
@@ -917,34 +996,26 @@ function parseAnyDate(val) {
     const d = new Date(Date.UTC(year, mm, day));
     return isNaN(d) ? null : d;
   }
-
-  // Not a date (e.g., "ok")
   return null;
 }
-
 function formatDateSafe(val) {
   const d = parseAnyDate(val);
   return d ? d.toISOString().slice(0, 10) : String(val ?? "");
 }
-
 function daysLeftSafe(val) {
   const d = parseAnyDate(val);
   if (!d) return null;
   const today = new Date();
-  // Normalize times to midnight UTC for clarity
   const D = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   const T = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   return Math.round((D - T) / 86400000);
 }
 
 function kvGrid(obj, keys) {
-  // Which keys should be treated as "dates"
   const dateKeys = new Set([
     "pma_expiry","cf_validate","takeover_date","contract_start","contract_end",
     "agreement_validity","created_at","updated_at"
   ]);
-
-  // Which date keys should show the "days left/overdue" badge
   const badgeKeys = new Set(["pma_expiry","contract_end"]);
 
   return `
@@ -952,8 +1023,6 @@ function kvGrid(obj, keys) {
       ${keys.map(k => {
         let rawVal = obj?.[k];
         let val = dateKeys.has(k) ? formatDateSafe(rawVal) : fmt(rawVal);
-
-        // Optional badge only if it's a real date
         let badge = "";
         if (badgeKeys.has(k)) {
           const dLeft = daysLeftSafe(rawVal);
@@ -965,7 +1034,6 @@ function kvGrid(obj, keys) {
             badge = `<span style="margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid ${color};color:${color};font-size:12px">${text}</span>`;
           }
         }
-
         return `
           <div class="muted" style="word-break:break-word">${k}</div>
           <div style="word-break:break-word">${val}${badge}</div>
@@ -974,7 +1042,6 @@ function kvGrid(obj, keys) {
     </div>
   `;
 }
-
 function miniTable(headers, rows) {
   if (!rows?.length) return `<div class="muted">No records.</div>`;
   return `
@@ -1097,6 +1164,9 @@ qInput.addEventListener("keydown", (e) => {
     qInput.value = "";
   }
 });
+
+// set initial state of "+ New" button
+refreshNewBtnState();
 </script>
 </body>
 </html>
