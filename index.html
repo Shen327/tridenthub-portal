@@ -62,6 +62,63 @@
     dialog.details td, dialog.details th{ border-bottom:1px solid rgba(255,255,255,.09); padding:9px 11px; }
     dialog.details tbody tr:nth-child(even) td{ background:rgba(255,255,255,.02); }
     dialog.details tbody tr:hover td{ background:var(--dlg-row); }
+    dialog.formdlg{
+      background:#ffffff;
+      color:#0b1220;
+      border:1px solid #d1d5db;
+      border-radius:16px;
+      box-shadow:0 22px 60px rgba(0,0,0,.35);
+      padding:0;               
+    }
+    dialog.formdlg::backdrop{ background:rgba(0,0,0,.55); }
+
+    dialog.formdlg form{
+      max-height:88vh;
+      overflow:auto;
+      padding:16px;
+    }
+    dialog.formdlg h3{ margin:0; color:#0f172a; letter-spacing:.2px; }
+    dialog.formdlg .grid{ gap:12px; }
+
+    dialog.formdlg label{ color:#334155; font-weight:700; font-size:12px; }
+    dialog.formdlg input,
+    dialog.formdlg select,
+    dialog.formdlg textarea{
+      width:100%;
+      background:#ffffff;
+      border:1px solid #cbd5e1;
+      color:#0b1220;
+      padding:10px 10px;
+      border-radius:10px;
+      box-shadow: inset 0 1px 0 rgba(0,0,0,.02);
+    }
+    dialog.formdlg input::placeholder,
+    dialog.formdlg textarea::placeholder{ color:#94a3b8; }
+    dialog.formdlg input:focus,
+    dialog.formdlg select:focus,
+    dialog.formdlg textarea:focus{
+      outline:2px solid #2563eb;
+      box-shadow:0 0 0 3px rgba(37,99,235,.22);
+      border-color:#2563eb;
+    }
+
+    dialog.formdlg .btn.secondary{
+      background:#f1f5f9;
+      border-color:#cbd5e1;
+      color:#0b1220;
+    }
+    dialog.formdlg .btn.danger{
+      background:#dc2626;
+      border-color:#dc2626;
+    }
+
+    dialog.formdlg .xbtn{
+      width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+      border-radius:10px; border:1px solid #d1d5db; background:#ffffff; color:#0b1220; font-weight:800;
+      box-shadow:0 1px 0 rgba(0,0,0,.04);
+    }
+    dialog.formdlg .xbtn:hover{ background:#f8fafc; }
+
     .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800; line-height:1.5; }
   </style>
 
@@ -328,7 +385,7 @@ const SCHEMAS = {
     {key:'software_version',label:'Software version'},
     {key:'operation',label:'Operation'},
     {key:'roping',label:'Roping'},
-    {key:'rope_diameter',label:'Rope diameter'},
+    {key:'rope_diameter_nos_length',label:'Rope Diameter * Nos. * Length'},
     {key:'rope_construction',label:'Rope construction'},
     {key:'pma_status',label:'PMA status'},
     {key:'pma_expiry',label:'PMA expiry (date)'},
@@ -824,10 +881,11 @@ function openForm(view, id){
 
   const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
   const dlg = document.createElement("dialog");
+  dlg.classList.add("formdlg"); // << add this line
   dlg.innerHTML = `<form method="dialog">
     <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
-      <button class="btn secondary" value="close" type="submit">✕</button>
+      <button class="xbtn" value="close" type="submit" aria-label="Close">✕</button>
     </header>
     <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
       ${fieldsFor(view).map(f=> fieldHTML(f, row[f.key]) ).join('')}
@@ -1044,7 +1102,7 @@ const EQUIPMENT_DETAIL_FIELDS = [
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
   "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
   "machine_type","motor_data","controller","software_version","operation",
-  "roping","rope_diameter","rope_construction",
+  "roping","rope_diameter_nos_length","rope_construction",
   "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
 ];
 const CONTRACT_DETAIL_FIELDS = [
