@@ -377,9 +377,15 @@ const SCHEMAS = {
     {key:'speed_m/m',label:'Speed (m/m)'},
     {key:'rise_m',label:'Rise (m)'},
     {key:'stops_openings',label:'Stops / Openings'},
+    {key:'hoistway_size',label:'Hoistway Size (W * D)'},
+    {key:'overhead',label:'Overhead'},
+    {key:'pit_depth',label:'Pit Depth'},
+    {key:'beam_to_beam_distance',label:'Beam-to-beam Distance'},
+    {key:'travel_height',label:'Travel Height'},
     {key:'stepwidth_mm',label:'Step width (mm)'},
     {key:'inclination',label:'Inclination'},
     {key:'machine_type',label:'Machine type'},
+    {key:'main_sheave',label:'Main Sheave'},
     {key:'motor_data',label:'Motor data',type:'textarea'},
     {key:'controller',label:'Controller'},
     {key:'software_version',label:'Software version'},
@@ -452,13 +458,14 @@ const SCHEMAS = {
 };
 
 const NAV = [
-  { title:"Sales", items:[ {key:"contracts", label:"Contracts"} ]},
+  { title:"Sales", items:[]},
   { title:"Project", items:[
     {key:"new_install",  label:"New Installation"},
     {key:"new_modern",   label:"New Modernization"},
     {key:"new_contract", label:"New Contract"}
   ]},
   { title:"Service Operation", items:[
+    {key:"contracts", label:"Contracts"}
     {key:"services",   label:"Services"},
     {key:"callbacks",  label:"Call Back"},
     {key:"repairs",    label:"Repair"},
@@ -1100,8 +1107,8 @@ function wireRealtime() {
 const EQUIPMENT_DETAIL_FIELDS = [
   "type","pma_no","name","location","brand","model_name",
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
-  "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
-  "machine_type","motor_data","controller","software_version","operation",
+  "speed_m/m","rise_m","stops_openings","stepwidth_mm","hoistway_size","overhead","pit_depth","beam_to_beam_distance","travel_height","inclination",
+  "machine_type","main_sheave","motor_data","controller","software_version","operation",
   "roping","rope_diameter_nos_length","rope_construction",
   "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
 ];
