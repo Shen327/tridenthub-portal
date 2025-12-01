@@ -201,6 +201,10 @@ const byId = (root, id) => root.querySelector('#' + CSS.escape(id));
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.style.display='block'; setTimeout(()=>{t.style.display='none';}, 2800); }
 function parseTS(x){ try{ return x? new Date(x): null }catch{ return null } }
 function minutesDiff(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000) }
+function confirmDeleteTwice(what = "this record") {
+  if (!confirm(`Delete ${what}?`)) return false;                        
+  return confirm("Are you absolutely sure? This cannot be undone.");    
+}
 
 /* ===== Per-page search helpers ===== */
 let PAGE_Q = "";
@@ -231,7 +235,9 @@ function wirePageSearch(){
 /* ===================== SUPABASE (REST) ===================== */
 const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eGNydHh3cmh4eW1seWJ4bGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDU4NzgsImV4cCI6MjA3NzEyMTg3OH0.ehMiF9uPgpW_eST549RvvlK2KrpPm9NJ1qhtz3tErqc';
-const DOCS_BUCKET = 'portal_docs';
+const EQUIP_BUCKET    = 'equipment-docs';
+const CONTRACT_BUCKET = 'contracts-docs';
+
 
 const REST = `${SUPABASE_URL}/rest/v1`;
 async function restFetch(path, { method='GET', body, prefer } = {}) {
@@ -315,7 +321,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","name","location","manufacturer","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -377,8 +383,10 @@ const SCHEMAS = {
   equipments: [
     {key:'type',label:'Type'},
     {key:'pma_no',label:'PMA'},
-    {key:'name',label:'Name'},
-    {key:'location',label:'Location'},
+    {key:'unit_no',label:'Unit Number'},
+    {key:'comm_no',label:'Comm Number'},
+    {key:'building_name',label:'Building Name'},
+    {key:'location',label:'Location (Address)'},
     {key:'manufacturer',label:'Manufacturer'},
     {key:'model_name',label:'Model name'},
     {key:'capacity_kg',label:'Capacity (kg)'},
@@ -395,7 +403,7 @@ const SCHEMAS = {
     {key:'software_version',label:'Software version'},
     {key:'operation',label:'Operation'},
     {key:'roping',label:'Roping'},
-    {key:'rope_diameter',label:'Rope diameter'},
+    {key:'rope_diameter_nos_length',label:'Rope Diameter * Nos. * Length'},
     {key:'rope_construction',label:'Rope construction'},
     {key:'pma_status',label:'PMA status'},
     {key:'pma_expiry',label:'PMA expiry (date)'},
@@ -498,7 +506,7 @@ const store = {
 /* ---------- GLOBAL SEARCH (full-DB) ---------- */
 const SEARCHMAP = {
   contracts: ["building_name","manufacturer","equipment_type","number_lift","factory_code","location_state","pma_no","contract_type","contract_status","remark"],
-  equipments: ["pma_no","name","location","manufacturer","model_name","pma_status","contract_status"],
+  equipments: ["pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","contract_status"],
   tasks: ["title","type","status","priority","assigned_to","equipment_pma","location","remark","description"],
   inspections: ["title","subtype","status","assigned_to","location","equipment_pma","certificate_no","result","remark"],
   reports: ["title","remark","equipment_pma","location","created_by_id","assigned_to_id"],
@@ -532,7 +540,7 @@ function buildOrFilter(q, cols) {
 function smallColsFor(table) {
   const base = {
     contracts: ["building_name","manufacturer","equipment_type","pma_no","contract_type","contract_status","updated_at"],
-    equipments: [ "pma_no","name","location","manufacturer","model_name","pma_status","contract_status","updated_at"],
+    equipments: [ "pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","contract_status","updated_at"],
     tasks: [ "title","type","status","priority","assigned_to","equipment_pma","due_date","updated_at"],
     reports: [ "title","remark","equipment_pma","created_at"],
     attendance: [ "user_name","check_in_at","check_out_at","location_name"],
@@ -735,7 +743,14 @@ function render(){
 
   $("#viewHost").innerHTML = `<table>${thead}${tbodyHtml}</table>`;
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
-  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
+  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=>{
+    const nice = currentView.endsWith('s') ? currentView.slice(0,-1) : currentView;
+    if (!confirmDeleteTwice(nice)) return;
+    removeRow(currentView, b.dataset.del)
+      .then(()=> { toast("Deleted."); })
+      .catch(err=> toast(`Error: ${err.message||err}`));
+  }));
+
 
   // Docs buttons
   $("#viewHost").querySelectorAll('[data-docs]').forEach(b=> b.addEventListener('click', ()=>{
@@ -923,9 +938,15 @@ function openForm(view, id){
   });
 
   $("#delBtn", dlg)?.addEventListener("click", async ()=>{
-    if(confirm("Delete this record?")){
-      try{ await removeRow(view, id); await syncAll(); dlg.close(); }
-      catch(err){ toast(`Error: ${err.message||err}`); }
+    const nice = view.endsWith('s') ? view.slice(0,-1) : view;
+    if (!confirmDeleteTwice(nice)) return;
+    try {
+      await removeRow(view, id);
+      await syncAll();
+      dlg.close();
+      toast("Deleted.");
+    } catch(err){
+      toast(`Error: ${err.message||err}`);
     }
   });
 
@@ -1121,11 +1142,11 @@ function wireRealtime() {
 
 /* ===================== DETAILS DIALOGS ===================== */
 const EQUIPMENT_DETAIL_FIELDS = [
-  "type","pma_no","name","location","manufacturer","model_name",
+  "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name",
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
   "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
   "machine_type","motor_data","controller","software_version","operation",
-  "roping","rope_diameter","rope_construction",
+  "roping","rope_diameter_nos_length","rope_construction",
   "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
 ];
 const CONTRACT_DETAIL_FIELDS = [
@@ -1275,9 +1296,8 @@ async function showContractDetails(contractId){
   }
 }
 
-/* ===================== STORAGE UTILS & DOCS (Equipments + Contracts) ===================== */
-async function signedUrl(path){
-  const { data, error } = await supa.storage.from(DOCS_BUCKET).createSignedUrl(path, 60*10);
+async function signedUrl(bucketName, path){
+  const { data, error } = await supa.storage.from(bucketName).createSignedUrl(path, 60 * 10);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }
@@ -1289,19 +1309,19 @@ function equipmentDocPath(equipmentId, file){
   const safeName = file.name.replace(/[^\w.\- ]+/g,'_');
   return `equipments/${encodeURIComponent(String(equipmentId))}/${ts}_${rnd}_${safeName}`;
 }
-async function uploadDocsForEquipment(equipmentId, pmaNo, files, extras={}){
-  if(!files?.length) return [];
-  const bucket = supa.storage.from(DOCS_BUCKET);
+async function uploadDocsForEquipment(equipmentId, pmaNo, files, extras = {}) {
+  if (!files?.length) return [];
+  const bucket = supa.storage.from(EQUIP_BUCKET);   // <<< use equipment bucket
   const rows = [];
-  for (const file of files){
+  for (const file of files) {
     const path = equipmentDocPath(equipmentId, file);
-    const { error } = await bucket.upload(path, file, { upsert:true, contentType:file.type || undefined });
+    const { error } = await bucket.upload(path, file, { upsert: true, contentType: file.type || undefined });
     if (error) throw new Error(error.message);
     rows.push({
       equipment_id: equipmentId,
       pma_no: pmaNo ?? null,
       file_name: file.name,
-      file_path: path,
+      file_path: path,               // path only; bucket is known by context
       content_type: file.type || null,
       file_size: file.size ?? null,
       category: extras.category ?? null,
@@ -1309,19 +1329,20 @@ async function uploadDocsForEquipment(equipmentId, pmaNo, files, extras={}){
       uploaded_by: extras.uploadedBy ?? null
     });
   }
-  if(rows.length) await restInsert('equipment_docs', rows);
+  if (rows.length) await restInsert('equipment_docs', rows);
   return rows;
 }
+
 async function listDocsForEquipment(equipmentId){
   return await restSelectAll('equipment_docs', `?equipment_id=eq.${encodeURIComponent(equipmentId)}&order=uploaded_at.desc`);
 }
 async function deleteEquipmentDocById(docId){
   const [doc] = await restSelectAll('equipment_docs', `?id=eq.${encodeURIComponent(docId)}`);
   if (!doc) return;
-  const bucket = supa.storage.from(DOCS_BUCKET);
-  await bucket.remove([doc.file_path]);
+  await supa.storage.from(EQUIP_BUCKET).remove([doc.file_path]);   // <<< equipment bucket
   await restDelete('equipment_docs', `?id=eq.${encodeURIComponent(docId)}`);
 }
+
 async function showEquipmentDocsDialog(equipmentId, pmaNo){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
@@ -1378,7 +1399,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
     $("#eDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
       const id=b.dataset.open;
       const row = rows.find(x=>x.id===id); if(!row) return;
-      try{ const url = await signedUrl(row.file_path); window.open(url, "_blank"); }
+      try{ const url = await signedUrl(EQUIP_BUCKET, row.file_path); window.open(url, "_blank"); }
       catch(err){ toast('Open failed: '+(err.message||err)); }
     }));
     $("#eDocsBody", dlg).querySelectorAll('[data-rm]').forEach(b=> b.addEventListener('click', async ()=>{
@@ -1410,13 +1431,13 @@ function contractDocPath(contractId, file){
   const safeName = file.name.replace(/[^\w.\- ]+/g,'_');
   return `contracts/${encodeURIComponent(String(contractId))}/${ts}_${rnd}_${safeName}`;
 }
-async function uploadDocsForContract(contractId, pmaNo, buildingName, files, extras={}){
-  if(!files?.length) return [];
-  const bucket = supa.storage.from(DOCS_BUCKET);
+async function uploadDocsForContract(contractId, pmaNo, buildingName, files, extras = {}) {
+  if (!files?.length) return [];
+  const bucket = supa.storage.from(CONTRACT_BUCKET);   // <<< contracts bucket
   const rows = [];
-  for (const file of files){
+  for (const file of files) {
     const path = contractDocPath(contractId, file);
-    const { error } = await bucket.upload(path, file, { upsert:true, contentType:file.type || undefined });
+    const { error } = await bucket.upload(path, file, { upsert: true, contentType: file.type || undefined });
     if (error) throw new Error(error.message);
     rows.push({
       contract_id: contractId,
@@ -1431,19 +1452,20 @@ async function uploadDocsForContract(contractId, pmaNo, buildingName, files, ext
       uploaded_by: extras.uploadedBy ?? null
     });
   }
-  if(rows.length) await restInsert('contract_docs', rows);
+  if (rows.length) await restInsert('contract_docs', rows);
   return rows;
 }
+
 async function listDocsForContract(contractId){
   return await restSelectAll('contract_docs', `?contract_id=eq.${encodeURIComponent(contractId)}&order=uploaded_at.desc`);
 }
 async function deleteContractDocById(docId){
   const [doc] = await restSelectAll('contract_docs', `?id=eq.${encodeURIComponent(docId)}`);
   if (!doc) return;
-  const bucket = supa.storage.from(DOCS_BUCKET);
-  await bucket.remove([doc.file_path]);
+  await supa.storage.from(CONTRACT_BUCKET).remove([doc.file_path]);   // <<< contracts bucket
   await restDelete('contract_docs', `?id=eq.${encodeURIComponent(docId)}`);
 }
+
 async function showContractDocsDialog(contractId, pmaNo, buildingName){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
@@ -1500,7 +1522,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
     $("#cDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
       const id=b.dataset.open;
       const row = rows.find(x=>x.id===id); if(!row) return;
-      try{ const url = await signedUrl(row.file_path); window.open(url, "_blank"); }
+      try{ const url = await signedUrl(CONTRACT_BUCKET, row.file_path); window.open(url, "_blank"); }
       catch(err){ toast('Open failed: '+(err.message||err)); }
     }));
     $("#cDocsBody", dlg).querySelectorAll('[data-rm]').forEach(b=> b.addEventListener('click', async ()=>{
