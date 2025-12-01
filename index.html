@@ -315,7 +315,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","name","location","brand","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","name","location","manufacturer","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -325,7 +325,7 @@ const COLUMNS = {
 const SCHEMAS = {
   contracts: [
     {key:'building_name',label:'Building name'},
-    {key:'brand',label:'Brand'},
+    {key:'manufacturer',label:'Manufacturer'},
     {key:'equipment_type',label:'Equipment type'},
     {key:'number_lift',label:'Number of lifts'},
     {key:'factory_code',label:'Factory code'},
@@ -379,7 +379,7 @@ const SCHEMAS = {
     {key:'pma_no',label:'PMA'},
     {key:'name',label:'Name'},
     {key:'location',label:'Location'},
-    {key:'brand',label:'Brand'},
+    {key:'manufacturer',label:'Manufacturer'},
     {key:'model_name',label:'Model name'},
     {key:'capacity_kg',label:'Capacity (kg)'},
     {key:'capacity_persons',label:'Capacity (persons)'},
@@ -497,8 +497,8 @@ const store = {
 
 /* ---------- GLOBAL SEARCH (full-DB) ---------- */
 const SEARCHMAP = {
-  contracts: ["building_name","brand","equipment_type","number_lift","factory_code","location_state","pma_no","contract_type","contract_status","remark"],
-  equipments: ["pma_no","name","location","brand","model_name","pma_status","contract_status"],
+  contracts: ["building_name","manufacturer","equipment_type","number_lift","factory_code","location_state","pma_no","contract_type","contract_status","remark"],
+  equipments: ["pma_no","name","location","manufacturer","model_name","pma_status","contract_status"],
   tasks: ["title","type","status","priority","assigned_to","equipment_pma","location","remark","description"],
   inspections: ["title","subtype","status","assigned_to","location","equipment_pma","certificate_no","result","remark"],
   reports: ["title","remark","equipment_pma","location","created_by_id","assigned_to_id"],
@@ -531,8 +531,8 @@ function buildOrFilter(q, cols) {
 })();
 function smallColsFor(table) {
   const base = {
-    contracts: ["building_name","brand","equipment_type","pma_no","contract_type","contract_status","updated_at"],
-    equipments: [ "pma_no","name","location","brand","model_name","pma_status","contract_status","updated_at"],
+    contracts: ["building_name","manufacturer","equipment_type","pma_no","contract_type","contract_status","updated_at"],
+    equipments: [ "pma_no","name","location","manufacturer","model_name","pma_status","contract_status","updated_at"],
     tasks: [ "title","type","status","priority","assigned_to","equipment_pma","due_date","updated_at"],
     reports: [ "title","remark","equipment_pma","created_at"],
     attendance: [ "user_name","check_in_at","check_out_at","location_name"],
@@ -1121,7 +1121,7 @@ function wireRealtime() {
 
 /* ===================== DETAILS DIALOGS ===================== */
 const EQUIPMENT_DETAIL_FIELDS = [
-  "type","pma_no","name","location","brand","model_name",
+  "type","pma_no","name","location","manufacturer","model_name",
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
   "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
   "machine_type","motor_data","controller","software_version","operation",
@@ -1129,7 +1129,7 @@ const EQUIPMENT_DETAIL_FIELDS = [
   "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
 ];
 const CONTRACT_DETAIL_FIELDS = [
-  "id","building_name","brand","equipment_type","number_lift","factory_code","location_state",
+  "id","building_name","manufacturer","equipment_type","number_lift","factory_code","location_state",
   "pma_no","pma_expiry","cf_validate","rates_per_month","contract_type",
   "takeover_date","contract_start","contract_end","agreement_validity","service",
   "contract_status","remark","created_at","updated_at"
@@ -1252,7 +1252,7 @@ async function showContractDetails(contractId){
     const tasks = pma ? await restSelectAll("tasks", `?equipment_pma=eq.${encodeURIComponent(pma)}&order=created_at.desc`) : [];
 
     const taskHeaders = ["title","type","status","priority","assigned_to","due_date","updated_at"];
-    const equipHeaders = ["type","name","brand","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
+    const equipHeaders = ["type","name","manufacturer","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
 
     $("#contractBody", dlg).innerHTML = `
       <section style="margin-bottom:16px">
