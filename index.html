@@ -5,13 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TRIDENT Portal</title>
   <style>
-    :root{ --bg:#0b1220;--bg2:#0e1626;--panel:#0f172a;--muted:#8aa0b8;--ring:#60a5fa;
-      --fg:#e2e8f0;--fg2:#cbd5e1;--brand:#2563eb;--ok:#16a34a;--danger:#ef4444; }
+    :root{
+      --bg:#0b1220;--bg2:#0e1626;--panel:#0f172a;--muted:#8aa0b8;--ring:#60a5fa;
+      --fg:#e2e8f0;--fg2:#cbd5e1;--brand:#2563eb;--ok:#16a34a;--danger:#ef4444;
+      /* Dialog (more viewable) */
+      --dlg-bg:#101a2b; --dlg-fg:#eef5ff; --dlg-muted:#b8c9da;
+      --dlg-key:#a8c8ff; --dlg-edge:#5f6f86; --dlg-row:#0f1a2a;
+      --dlg-head:#16243a;
+    }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--fg);
          font:14px/1.45 system-ui,Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif}
     .app{display:flex;height:100%}
+    /* Sidebar */
     .sidebar{width:260px;min-width:240px;background:rgba(16,24,40,.90);backdrop-filter: blur(8px);
              border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column}
     .sidebar header{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:700}
@@ -21,6 +28,7 @@
     .item{display:flex;gap:10px;align-items:center;padding:9px 10px;margin:4px 6px;border-radius:10px;cursor:pointer}
     .item:hover{background:rgba(255,255,255,.06)}
     .item.active{background:rgba(37,99,235,.18);outline:1px solid rgba(37,99,235,.35)}
+    /* Main */
     .main{flex:1;display:flex;flex-direction:column;min-width:0}
     .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid rgba(255,255,255,.06)}
     .search{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;min-width:280px}
@@ -32,13 +40,14 @@
     .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(59,130,246,.55);border-radius:12px;background:linear-gradient(#2b65f6,#1d4ed8);color:#fff;font-weight:700}
     .btn.secondary{background:rgba(255,255,255,.06);border-color:#475569;color:#e5e7eb}
     .btn.danger{background:#b91c1c;border-color:#b91c1c}
+    .btn.neutral{background:rgba(255,255,255,.06);border-color:#64748b;color:#e2e8f0}
     .btn.sm { padding:.38rem .6rem; border-radius:10px; font-weight:600; }
     table{width:100%;border-collapse:collapse}
     th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top}
     th{font-size:12px;color:var(--fg2)}
     tr:hover td{background:rgba(255,255,255,.03)}
-    td.actions { width:1%; min-width:170px; white-space:nowrap; }
-    td.actions .lr {display:flex; justify-content:space-between; align-items:center; gap:.5rem; min-width:170px}
+    td.actions { width:1%; min-width:210px; white-space:nowrap; }
+    td.actions .lr {display:flex; justify-content:flex-end; align-items:center; gap:.5rem; min-width:210px}
     .muted{color:var(--muted)}
     dialog{background:rgba(16,24,40,.98);border:1px solid rgba(255,255,255,.1);border-radius:16px}
     dialog form{padding:16px}
@@ -46,83 +55,86 @@
     input,select,textarea{width:100%;background:#0b1220;border:1px solid #3a4a61;color:var(--fg);padding:8px;border-radius:10px}
     input:focus,select:focus,textarea:focus{outline:2px solid var(--ring);box-shadow:0 0 0 3px rgba(96,165,250,.25);border-color:#60a5fa}
     .toast{position:fixed;right:16px;bottom:14px;background:#0b1220;border:1px solid #475569;border-radius:12px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.35);z-index:60}
+    /* Lock card */
     #lock{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#0b1220;border:1px solid #475569;border-radius:16px;padding:18px;width:min(520px,92vw);z-index:50}
     #lock h3{margin:0 0 10px}
     #lock .row{display:flex;gap:8px}
     #error{display:none;background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.35);padding:8px 10px;border-radius:10px;margin:8px 0}
     @media (max-width: 880px){ .sidebar{position:fixed;transform:translateX(-100%);z-index:70;transition:.25s} .sidebar.show{transform:translateX(0)} }
-    :root{ --dlg-bg:#0a0f1a; --dlg-fg:#e8eef6; --dlg-muted:#a9bed3; --dlg-key:#9cc3ff; --dlg-edge:#4b5b70; --dlg-row:#101828; }
-    dialog.details{ color:var(--dlg-fg); background:var(--dlg-bg); border:1px solid var(--dlg-edge); border-radius:16px; padding:0; }
-    dialog.details::backdrop{ background:rgba(0,0,0,.70); }
-    dialog.details form{ max-height:82vh; overflow:auto; padding:16px; }
-    dialog.details h3{ color:#fafdff; letter-spacing:.2px; }
+
+    /* ===== Detail dialog (more viewable) ===== */
+    dialog.details{
+      color:var(--dlg-fg); background:var(--dlg-bg);
+      border:1px solid var(--dlg-edge); border-radius:16px; padding:0;
+      box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    }
+    dialog.details::backdrop{ background:rgba(0,0,0,.72); }
+    dialog.details form{ max-height:82vh; overflow:auto; padding:0; }
+    dialog.details header{
+      background:var(--dlg-head); padding:12px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      position:sticky; top:0; z-index:1;
+    }
+    dialog.details .pad{ padding:16px; }
+    dialog.details h3{ color:#fafdff; letter-spacing:.2px; margin:0; }
     dialog.details h4{ color:#f4f7fb; margin:14px 0 10px; }
-    dialog.details table{ width:100%; border-collapse:collapse; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.10); border-radius:12px; overflow:hidden; font-size:13px; }
+    dialog.details table{
+      width:100%; border-collapse:collapse; background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.10); border-radius:12px; overflow:hidden; font-size:13px;
+    }
     dialog.details th{ color:#d7e2ee; background:rgba(255,255,255,.06); text-transform:uppercase; font-size:11px; letter-spacing:.06em; }
     dialog.details td, dialog.details th{ border-bottom:1px solid rgba(255,255,255,.09); padding:9px 11px; }
     dialog.details tbody tr:nth-child(even) td{ background:rgba(255,255,255,.02); }
     dialog.details tbody tr:hover td{ background:var(--dlg-row); }
-    dialog.formdlg{
+    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800; line-height:1.5; }
+    /* --- Light theme for edit/add dialogs only (not the big .details viewer) --- */
+    dialog:not(.details){
       background:#ffffff;
       color:#0b1220;
-      border:1px solid #d1d5db;
+      border:1px solid #e2e8f0;
       border-radius:16px;
-      box-shadow:0 22px 60px rgba(0,0,0,.35);
-      padding:0;               
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      padding:0; /* keep form padding handling */
     }
-    dialog.formdlg::backdrop{ background:rgba(0,0,0,.55); }
-
-    dialog.formdlg form{
-      max-height:88vh;
-      overflow:auto;
-      padding:16px;
+    dialog:not(.details)::backdrop{
+      background:rgba(0,0,0,.55);
     }
-    dialog.formdlg h3{ margin:0; color:#0f172a; letter-spacing:.2px; }
-    dialog.formdlg .grid{ gap:12px; }
 
-    dialog.formdlg label{ color:#334155; font-weight:700; font-size:12px; }
-    dialog.formdlg input,
-    dialog.formdlg select,
-    dialog.formdlg textarea{
-      width:100%;
+    /* Typography inside the light dialog */
+    dialog:not(.details) h3{ color:#0b1220; }
+    dialog:not(.details) label{ color:#334155; }
+
+    /* Inputs in the light dialog */
+    dialog:not(.details) input,
+    dialog:not(.details) select,
+    dialog:not(.details) textarea{
       background:#ffffff;
-      border:1px solid #cbd5e1;
       color:#0b1220;
-      padding:10px 10px;
+      border:1px solid #cbd5e1;
       border-radius:10px;
-      box-shadow: inset 0 1px 0 rgba(0,0,0,.02);
     }
-    dialog.formdlg input::placeholder,
-    dialog.formdlg textarea::placeholder{ color:#94a3b8; }
-    dialog.formdlg input:focus,
-    dialog.formdlg select:focus,
-    dialog.formdlg textarea:focus{
-      outline:2px solid #2563eb;
-      box-shadow:0 0 0 3px rgba(37,99,235,.22);
-      border-color:#2563eb;
+    dialog:not(.details) input:focus,
+    dialog:not(.details) select:focus,
+    dialog:not(.details) textarea:focus{
+      outline:2px solid #60a5fa;
+      box-shadow:0 0 0 3px rgba(96,165,250,.25);
+      border-color:#60a5fa;
     }
 
-    dialog.formdlg .btn.secondary{
+    /* Hint text inside the form */
+    dialog:not(.details) .muted{ color:#64748b; }
+
+    /* Buttons look fine on white; keep them as-is, but you can tweak if desired */
+    /* .btn.secondary in light dialog */
+    dialog:not(.details) .btn.secondary{
       background:#f1f5f9;
       border-color:#cbd5e1;
-      color:#0b1220;
-    }
-    dialog.formdlg .btn.danger{
-      background:#dc2626;
-      border-color:#dc2626;
+      color:#0f172a;
     }
 
-    dialog.formdlg .xbtn{
-      width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
-      border-radius:10px; border:1px solid #d1d5db; background:#ffffff; color:#0b1220; font-weight:800;
-      box-shadow:0 1px 0 rgba(0,0,0,.04);
-    }
-    dialog.formdlg .xbtn:hover{ background:#f8fafc; }
-
-    .badge{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800; line-height:1.5; }
   </style>
 
-  <!-- Supabase JS for realtime -->
+  <!-- Supabase JS for realtime & storage -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -206,10 +218,7 @@ function rowMatches(row, q, cols){
 function wirePageSearch(){
   const inp = document.getElementById("pageQ");
   if(!inp) return;
-  inp.addEventListener("input", debounce(()=>{
-    PAGE_Q = inp.value.trim();
-    render();
-  },120));
+  inp.addEventListener("input", debounce(()=>{ PAGE_Q = inp.value.trim(); render(); },120));
   document.addEventListener("keydown", (e)=>{
     if(e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey){
       e.preventDefault(); inp.focus();
@@ -222,6 +231,7 @@ function wirePageSearch(){
 /* ===================== SUPABASE (REST) ===================== */
 const SUPABASE_URL  = 'https://cxxcrtxwrhxymlybxljs.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eGNydHh3cmh4eW1seWJ4bGpzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NDU4NzgsImV4cCI6MjA3NzEyMTg3OH0.ehMiF9uPgpW_eST549RvvlK2KrpPm9NJ1qhtz3tErqc';
+const DOCS_BUCKET = 'portal_docs';
 
 const REST = `${SUPABASE_URL}/rest/v1`;
 async function restFetch(path, { method='GET', body, prefer } = {}) {
@@ -267,7 +277,7 @@ async function restSelectAll(table, qs = "", pageSize = PAGE_SIZE) {
   return out;
 }
 
-// Realtime client
+// Realtime + Storage client
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* ===================== PASSGATE ===================== */
@@ -287,7 +297,7 @@ $("#unlock").addEventListener("click", async ()=>{
   if( (dig && dig===PASS_HASH) || (!dig && $("#lockpw").value===PASS_PLAIN) ){
     UNLOCKED=true; $("#lock").hidden=true; renderSidebar(); updateNewBtnLabel();
     await syncAll();
-    wireRealtime(); // start live updates
+    wireRealtime(); // live updates
   } else { $("#error").style.display="block"; }
 });
 
@@ -377,20 +387,15 @@ const SCHEMAS = {
     {key:'speed_m/m',label:'Speed (m/m)'},
     {key:'rise_m',label:'Rise (m)'},
     {key:'stops_openings',label:'Stops / Openings'},
-    {key:'hoistway_size',label:'Hoistway Size (W * D) (mm)'},
-    {key:'overhead',label:'Overhead (mm)'},
-    {key:'pit_depth',label:'Pit Depth (mm)'},
-    {key:'beam_to_beam_distance',label:'Beam-to-beam Distance'},
     {key:'stepwidth_mm',label:'Step width (mm)'},
     {key:'inclination',label:'Inclination'},
     {key:'machine_type',label:'Machine type'},
-    {key:'main_sheave',label:'Main Sheave'},
     {key:'motor_data',label:'Motor data',type:'textarea'},
     {key:'controller',label:'Controller'},
     {key:'software_version',label:'Software version'},
     {key:'operation',label:'Operation'},
     {key:'roping',label:'Roping'},
-    {key:'rope_diameter_nos_length',label:'Rope Diameter * Nos. * Length'},
+    {key:'rope_diameter',label:'Rope diameter'},
     {key:'rope_construction',label:'Rope construction'},
     {key:'pma_status',label:'PMA status'},
     {key:'pma_expiry',label:'PMA expiry (date)'},
@@ -464,7 +469,7 @@ const NAV = [
     {key:"new_contract", label:"New Contract"}
   ]},
   { title:"Service Operation", items:[
-    {key:"contracts", label:"Service Contracts"},
+    {key:"contracts", label:"Services Contracts"}
     {key:"services",   label:"Services"},
     {key:"callbacks",  label:"Call Back"},
     {key:"repairs",    label:"Repair"},
@@ -511,7 +516,7 @@ function buildOrFilter(q, cols) {
   const parts = cols.map(c => `${c}.ilike.${pat}`);
   const exactCols = ["id","pma_no","equipment_pma","user_id","assigned_to_id","created_by_id"];
   for (const c of exactCols) if (cols.includes(c)) parts.push(`${c}.eq.${safe}`);
-  return `?or=(${parts.join(",")})&select=*&limit=100`;
+  return `?or=(${parts.join(",")})&select=*`;
 }
 (function wireSearchBox(){
   const qInput = document.getElementById('q');
@@ -565,12 +570,12 @@ async function globalSearch(q){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
   dlg.innerHTML = `
-    <form method="dialog" style="min-width:min(1100px,96vw)">
-      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">Search results for “${q.replace(/</g,"&lt;")}”</h3>
+    <form method="dialog">
+      <header>
+        <h3>Search results for “${q.replace(/</g,"&lt;")}”</h3>
         <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
-      <div id="searchBody"><div class="muted">Searching…</div></div>
+      <div class="pad" id="searchBody"><div class="muted">Searching…</div></div>
     </form>`;
   document.body.appendChild(dlg); dlg.showModal();
   dlg.addEventListener("close", ()=> dlg.remove());
@@ -685,26 +690,6 @@ function rowsFor(view){
   return [];
 }
 
-/* ===== PK helpers for robust delete ===== */
-function tableForView(view){
-  if (['services','callbacks','repairs'].includes(view)) return 'tasks';
-  if (['inspection_cf','inspection_14th'].includes(view)) return 'inspections';
-  return view;
-}
-function pkFor(view, row){
-  const table = tableForView(view);
-  if (row?.id != null) return { col: 'id', val: row.id };
-  if (table === 'equipments' && row?.pma_no != null)   return { col: 'pma_no', val: row.pma_no };
-  if (table === 'reports'    && row?.task_id != null)  return { col: 'task_id', val: row.task_id };
-  if (table === 'attendance' && row?.user_id != null)  return { col: 'user_id', val: row.user_id };
-  return { col: 'id', val: row?.id ?? '' };
-}
-function buildFilterQS(col, val){
-  const k = encodeURIComponent(col);
-  const v = encodeURIComponent(String(val));
-  return `?${k}=eq.${v}`;
-}
-
 function render(){
   if(!UNLOCKED){ $("#viewHost").innerHTML = '<div class="muted">Locked.</div>'; return; }
 
@@ -722,17 +707,27 @@ function render(){
   if (PAGE_Q && allRows) { cf.style.display = "inline"; cn.textContent = rows.length; }
   else { cf.style.display = "none"; }
 
-  const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'<th width="1%"></th></tr></thead>';
+  const extraHead = (currentView === "equipments" || currentView === "contracts")
+    ? '<th width="1%">Docs</th>' : '';
+  const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+ extraHead +'<th width="1%"></th></tr></thead>';
+
   const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
-    const pk = pkFor(currentView, r);
-    const domId = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
+    const id = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
     const tds = cols.map(c=>`<td>${fmt(r[c])}</td>`).join('');
-    return `<tr data-id="${domId}" data-col="${pk.col}" data-val="${fmt(pk.val)}">
+    const docsBtn =
+      currentView==="equipments"
+        ? `<button class="btn neutral sm" data-docs="${id}">Docs</button>`
+      : currentView==="contracts"
+        ? `<button class="btn neutral sm" data-cdocs="${id}">Docs</button>`
+      : '';
+    const docsTd = (currentView==="equipments" || currentView==="contracts") ? `<td>${docsBtn}</td>` : '';
+    return `<tr data-id="${id}">
       ${tds}
+      ${docsTd}
       <td class="actions">
         <div class="lr">
-          <button class="btn secondary sm" data-edit="${domId}">Edit</button>
-          <button class="btn danger sm" data-del="1" data-col="${pk.col}" data-val="${fmt(pk.val)}">Del</button>
+          <button class="btn secondary sm" data-edit="${id}">Edit</button>
+          <button class="btn danger sm" data-del="${id}">Del</button>
         </div>
       </td>
     </tr>`;
@@ -740,24 +735,19 @@ function render(){
 
   $("#viewHost").innerHTML = `<table>${thead}${tbodyHtml}</table>`;
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
+  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=> removeRow(currentView, b.dataset.del)) );
 
-  // NEW: column-aware delete
-  $("#viewHost").querySelectorAll('[data-del]').forEach(b=>{
-    b.addEventListener('click', async ()=>{
-      const col = b.dataset.col;
-      const val = b.dataset.val;
-      if(!col) return;
-      if(!confirm('Delete this record?')) return;
-      try{
-        await removeRow(currentView, { col, val });
-        toast('Deleted.');
-        await syncAll();
-      }catch(err){
-        console.error(err);
-        toast('Delete failed: ' + (err.message || err));
-      }
-    });
-  });
+  // Docs buttons
+  $("#viewHost").querySelectorAll('[data-docs]').forEach(b=> b.addEventListener('click', ()=>{
+    const id=b.dataset.docs;
+    const row = (store.equipments||[]).find(x => String(x.id)===String(id));
+    showEquipmentDocsDialog(id, row?.pma_no ?? null);
+  }));
+  $("#viewHost").querySelectorAll('[data-cdocs]').forEach(b=> b.addEventListener('click', ()=>{
+    const id=b.dataset.cdocs;
+    const row = (store.contracts||[]).find(x => String(x.id)===String(id));
+    showContractDocsDialog(id, row?.pma_no ?? null, row?.building_name ?? null);
+  }));
 
   // Row-click detail dialogs
   const tbodyEl = $("#viewHost table tbody");
@@ -848,6 +838,11 @@ function sanitizePayloadForTable(table, obj){
   }
   return out;
 }
+function tableForView(view){
+  if (['services','callbacks','repairs'].includes(view)) return 'tasks';
+  if (['inspection_cf','inspection_14th'].includes(view)) return 'inspections';
+  return view;
+}
 
 /* ===================== FORMS / CRUD ===================== */
 function fieldsFor(view){
@@ -886,15 +881,24 @@ function openForm(view, id){
     view==="equipments"  ? store.equipments  : [];
 
   const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
+  const docsSection =
+    (id && (view==="equipments" || view==="contracts"))
+      ? `<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:6px">
+           <input id="docFiles" type="file" multiple style="display:none" />
+           <button class="btn neutral sm" id="chooseDocs" type="button">Add docs</button>
+           <span class="muted" id="docHint">Upload will attach to this ${view.slice(0,-1)}.</span>
+         </div>`
+      : "";
+
   const dlg = document.createElement("dialog");
-  dlg.classList.add("formdlg"); // << add this line
   dlg.innerHTML = `<form method="dialog">
     <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
-      <button class="xbtn" value="close" type="submit" aria-label="Close">✕</button>
+      <button class="btn secondary" value="close" type="submit">✕</button>
     </header>
     <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
       ${fieldsFor(view).map(f=> fieldHTML(f, row[f.key]) ).join('')}
+      ${docsSection}
     </div>
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
       <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : '' }</div>
@@ -918,16 +922,32 @@ function openForm(view, id){
     }catch(err){ console.error(err); toast(`Error: ${err.message||err}`); }
   });
 
-  // Use column-aware delete inside dialog too
   $("#delBtn", dlg)?.addEventListener("click", async ()=>{
     if(confirm("Delete this record?")){
-      try{
-        const pk = pkFor(view, row);
-        await removeRow(view, pk);
-        await syncAll(); dlg.close();
-      }catch(err){ toast(`Error: ${err.message||err}`); }
+      try{ await removeRow(view, id); await syncAll(); dlg.close(); }
+      catch(err){ toast(`Error: ${err.message||err}`); }
     }
   });
+
+  // Docs upload
+  if (id && (view==="equipments" || view==="contracts")) {
+    $("#chooseDocs", dlg)?.addEventListener("click", ()=> $("#docFiles", dlg).click());
+    $("#docFiles", dlg)?.addEventListener("change", async (e)=>{
+      const files = Array.from(e.target.files || []);
+      if(!files.length) return;
+      try {
+        if (view==="equipments") {
+          await uploadDocsForEquipment(id, row?.pma_no ?? null, files);
+        } else {
+          await uploadDocsForContract(id, row?.pma_no ?? null, row?.building_name ?? null, files);
+        }
+        toast(`Uploaded ${files.length} file(s).`);
+      } catch (err) {
+        toast(`Upload failed: ${err.message||err}`);
+      }
+      e.target.value="";
+    });
+  }
 }
 
 function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
@@ -948,13 +968,15 @@ async function updateRow(view, id, patch){
   const clean = sanitizePayloadForTable(table, patch);
   await restUpdate(table, qs, clean);
 }
-
-// UPDATED: column-aware delete
-async function removeRow(view, pk){
-  // pk = { col, val }
-  const table = tableForView(view);
-  const qs = buildFilterQS(pk.col, pk.val);
-  await restDelete(table, qs);
+async function removeRow(view, id){
+  const qs = idFilter(id);
+  if (["inspection_cf","inspection_14th"].includes(view)) {
+    await restDelete("inspections", qs);
+  } else if (["services","callbacks","repairs"].includes(view)) {
+    await restDelete("tasks", qs);
+  } else {
+    await restDelete(view, qs);
+  }
 }
 
 /* ===================== CSV IMPORT/EXPORT ===================== */
@@ -1022,13 +1044,8 @@ async function importCsvForCurrentView(file){
   toast(`Imported ${done} row(s) into ${table}${hasId?' (upsert)':''}.`);
   await syncAll();
 }
-$("#importCsv").addEventListener("click", ()=>{
-  if(!UNLOCKED){ toast("Unlock first"); return; }
-  $("#csvFile").value=""; $("#csvFile").click();
-});
-$("#csvFile").addEventListener("change",(e)=>{
-  const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message));
-});
+$("#importCsv").addEventListener("click", ()=>{ if(!UNLOCKED){ toast("Unlock first"); return; } $("#csvFile").value=""; $("#csvFile").click(); });
+$("#csvFile").addEventListener("change",(e)=>{ const f=e.target.files?.[0]; if(f) importCsvForCurrentView(f).catch(err=>toast("Import failed: "+err.message)); });
 
 $("#exportCsv").addEventListener("click", ()=>{
   if(!UNLOCKED){ toast("Unlock first"); return; }
@@ -1046,7 +1063,9 @@ $("#exportCsv").addEventListener("click", ()=>{
 /* ===================== REALTIME (live updates) ===================== */
 const RT_TABLES = [
   "contracts","equipments","tasks","inspections","sites",
-  "reports","attendance","checkins","hr","tools_mgmt","sub_contractors","support"
+  "reports","attendance","checkins","hr","tools_mgmt","sub_contractors","support",
+  // docs tables for live refresh if others are open
+  "equipment_docs","contract_docs"
 ];
 function primaryKeyFor(table, row) {
   if (row?.id != null) return String(row.id);
@@ -1058,6 +1077,7 @@ function primaryKeyFor(table, row) {
 }
 function applyChangeToStore(table, eventType, newRow, oldRow) {
   const key = table;
+  if (!(key in store)) return; // ignore docs tables for main store
   const arr = store[key] || (store[key] = []);
   const newK = newRow ? primaryKeyFor(table, newRow) : "";
   const oldK = oldRow ? primaryKeyFor(table, oldRow) : newK;
@@ -1079,7 +1099,6 @@ async function resyncTable(table) {
 }
 function wireRealtime() {
   const ch = supa.channel("portal-realtime");
-
   RT_TABLES.forEach(table => {
     ch.on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
       const { eventType, new: n, old: o } = payload;
@@ -1087,13 +1106,11 @@ function wireRealtime() {
       rerender();
     });
   });
-
   ch.subscribe((status) => {
     if (status === "SUBSCRIBED")       console.log("[Realtime] live");
     else if (status === "CHANNEL_ERROR") console.warn("[Realtime] error");
     else if (status === "CLOSED")        console.warn("[Realtime] closed");
   });
-
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       const t = viewToTable(currentView);
@@ -1106,9 +1123,9 @@ function wireRealtime() {
 const EQUIPMENT_DETAIL_FIELDS = [
   "type","pma_no","name","location","brand","model_name",
   "capacity_kg","capacity_persons","capacity_persons_per_hour",
-  "speed_m/m","rise_m","stops_openings","stepwidth_mm","hoistway_size","overhead","pit_depth","beam_to_beam_distance","inclination",
-  "machine_type","main_sheave","motor_data","controller","software_version","operation",
-  "roping","rope_diameter_nos_length","rope_construction",
+  "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
+  "machine_type","motor_data","controller","software_version","operation",
+  "roping","rope_diameter","rope_construction",
   "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
 ];
 const CONTRACT_DETAIL_FIELDS = [
@@ -1173,12 +1190,12 @@ async function showEquipmentDetails(equipId){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
   dlg.innerHTML = `
-    <form method="dialog" style="min-width:min(980px,96vw)">
-      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">Equipment details</h3>
+    <form method="dialog">
+      <header>
+        <h3>Equipment details</h3>
         <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
-      <div id="equipBody"><div class="muted">Loading…</div></div>
+      <div class="pad" id="equipBody"><div class="muted">Loading…</div></div>
     </form>`;
   document.body.appendChild(dlg); dlg.showModal();
   dlg.addEventListener("close", ()=> dlg.remove());
@@ -1216,12 +1233,12 @@ async function showContractDetails(contractId){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
   dlg.innerHTML = `
-    <form method="dialog" style="min-width:min(980px,96vw)">
-      <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">Contract details</h3>
+    <form method="dialog">
+      <header>
+        <h3>Contract details</h3>
         <button class="btn secondary" value="close" type="submit">Close</button>
       </header>
-      <div id="contractBody"><div class="muted">Loading…</div></div>
+      <div class="pad" id="contractBody"><div class="muted">Loading…</div></div>
     </form>`;
   document.body.appendChild(dlg); dlg.showModal();
   dlg.addEventListener("close", ()=> dlg.remove());
@@ -1256,6 +1273,256 @@ async function showContractDetails(contractId){
   } catch (err) {
     $("#contractBody", dlg).innerHTML = `<div class="muted">Error: ${fmt(err.message)}</div>`;
   }
+}
+
+/* ===================== STORAGE UTILS & DOCS (Equipments + Contracts) ===================== */
+async function signedUrl(path){
+  const { data, error } = await supa.storage.from(DOCS_BUCKET).createSignedUrl(path, 60*10);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+/* ===== Equipment Docs ===== */
+function equipmentDocPath(equipmentId, file){
+  const ts = Date.now();
+  const rnd = (crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
+  const safeName = file.name.replace(/[^\w.\- ]+/g,'_');
+  return `equipments/${encodeURIComponent(String(equipmentId))}/${ts}_${rnd}_${safeName}`;
+}
+async function uploadDocsForEquipment(equipmentId, pmaNo, files, extras={}){
+  if(!files?.length) return [];
+  const bucket = supa.storage.from(DOCS_BUCKET);
+  const rows = [];
+  for (const file of files){
+    const path = equipmentDocPath(equipmentId, file);
+    const { error } = await bucket.upload(path, file, { upsert:true, contentType:file.type || undefined });
+    if (error) throw new Error(error.message);
+    rows.push({
+      equipment_id: equipmentId,
+      pma_no: pmaNo ?? null,
+      file_name: file.name,
+      file_path: path,
+      content_type: file.type || null,
+      file_size: file.size ?? null,
+      category: extras.category ?? null,
+      note: extras.note ?? null,
+      uploaded_by: extras.uploadedBy ?? null
+    });
+  }
+  if(rows.length) await restInsert('equipment_docs', rows);
+  return rows;
+}
+async function listDocsForEquipment(equipmentId){
+  return await restSelectAll('equipment_docs', `?equipment_id=eq.${encodeURIComponent(equipmentId)}&order=uploaded_at.desc`);
+}
+async function deleteEquipmentDocById(docId){
+  const [doc] = await restSelectAll('equipment_docs', `?id=eq.${encodeURIComponent(docId)}`);
+  if (!doc) return;
+  const bucket = supa.storage.from(DOCS_BUCKET);
+  await bucket.remove([doc.file_path]);
+  await restDelete('equipment_docs', `?id=eq.${encodeURIComponent(docId)}`);
+}
+async function showEquipmentDocsDialog(equipmentId, pmaNo){
+  const dlg = document.createElement("dialog");
+  dlg.className = "details";
+  dlg.innerHTML = `
+    <form method="dialog">
+      <header>
+        <h3>Equipment Documents</h3>
+        <div>
+          <input id="eDocAddFiles" type="file" multiple style="display:none" />
+          <button class="btn neutral sm" id="eDocAddBtn" type="button">Upload more</button>
+          <button class="btn secondary sm" value="close" type="submit">Close</button>
+        </div>
+      </header>
+      <div class="pad">
+        <div class="muted" style="margin:-2px 0 10px 0">
+          ${pmaNo ? `PMA: <b>${pmaNo}</b>` : ''}
+        </div>
+        <div id="eDocsBody"><div class="muted">Loading…</div></div>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  async function refresh(){
+    const rows = await listDocsForEquipment(equipmentId);
+    const html = `
+      <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:10px">
+        <table>
+          <thead>
+            <tr>
+              <th>File name</th><th>Category</th><th>Size</th><th>Type</th>
+              <th>Uploaded by</th><th>Uploaded at</th><th width="1%"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr data-doc="${r.id}">
+                <td>${fmt(r.file_name)}</td>
+                <td>${fmt(r.category)}</td>
+                <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
+                <td>${fmt(r.content_type)}</td>
+                <td>${fmt(r.uploaded_by)}</td>
+                <td>${fmt(r.uploaded_at)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn secondary sm" data-open="${r.id}">Open</button>
+                  <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                </td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    $("#eDocsBody", dlg).innerHTML = html;
+
+    $("#eDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
+      const id=b.dataset.open;
+      const row = rows.find(x=>x.id===id); if(!row) return;
+      try{ const url = await signedUrl(row.file_path); window.open(url, "_blank"); }
+      catch(err){ toast('Open failed: '+(err.message||err)); }
+    }));
+    $("#eDocsBody", dlg).querySelectorAll('[data-rm]').forEach(b=> b.addEventListener('click', async ()=>{
+      const id=b.dataset.rm;
+      if(!confirm('Delete this file?')) return;
+      try{ await deleteEquipmentDocById(id); await refresh(); toast('Deleted.'); }
+      catch(err){ toast('Delete failed: '+(err.message||err)); }
+    }));
+  }
+  await refresh();
+
+  $("#eDocAddBtn", dlg).addEventListener("click", ()=> $("#eDocAddFiles", dlg).click());
+  $("#eDocAddFiles", dlg).addEventListener("change", async (e)=>{
+    const files = Array.from(e.target.files||[]);
+    if(!files.length) return;
+    try{
+      await uploadDocsForEquipment(equipmentId, pmaNo ?? null, files);
+      await refresh();
+      toast(`Uploaded ${files.length} file(s).`);
+    } catch(err){ toast('Upload failed: '+(err.message||err)); }
+    e.target.value="";
+  });
+}
+
+/* ===== Contract Docs ===== */
+function contractDocPath(contractId, file){
+  const ts = Date.now();
+  const rnd = (crypto?.randomUUID?.() || Math.random().toString(36).slice(2));
+  const safeName = file.name.replace(/[^\w.\- ]+/g,'_');
+  return `contracts/${encodeURIComponent(String(contractId))}/${ts}_${rnd}_${safeName}`;
+}
+async function uploadDocsForContract(contractId, pmaNo, buildingName, files, extras={}){
+  if(!files?.length) return [];
+  const bucket = supa.storage.from(DOCS_BUCKET);
+  const rows = [];
+  for (const file of files){
+    const path = contractDocPath(contractId, file);
+    const { error } = await bucket.upload(path, file, { upsert:true, contentType:file.type || undefined });
+    if (error) throw new Error(error.message);
+    rows.push({
+      contract_id: contractId,
+      pma_no: pmaNo ?? null,
+      building_name: buildingName ?? null,
+      file_name: file.name,
+      file_path: path,
+      content_type: file.type || null,
+      file_size: file.size ?? null,
+      category: extras.category ?? null,
+      note: extras.note ?? null,
+      uploaded_by: extras.uploadedBy ?? null
+    });
+  }
+  if(rows.length) await restInsert('contract_docs', rows);
+  return rows;
+}
+async function listDocsForContract(contractId){
+  return await restSelectAll('contract_docs', `?contract_id=eq.${encodeURIComponent(contractId)}&order=uploaded_at.desc`);
+}
+async function deleteContractDocById(docId){
+  const [doc] = await restSelectAll('contract_docs', `?id=eq.${encodeURIComponent(docId)}`);
+  if (!doc) return;
+  const bucket = supa.storage.from(DOCS_BUCKET);
+  await bucket.remove([doc.file_path]);
+  await restDelete('contract_docs', `?id=eq.${encodeURIComponent(docId)}`);
+}
+async function showContractDocsDialog(contractId, pmaNo, buildingName){
+  const dlg = document.createElement("dialog");
+  dlg.className = "details";
+  dlg.innerHTML = `
+    <form method="dialog">
+      <header>
+        <h3>Contract Documents</h3>
+        <div>
+          <input id="cDocAddFiles" type="file" multiple style="display:none" />
+          <button class="btn neutral sm" id="cDocAddBtn" type="button">Upload more</button>
+          <button class="btn secondary sm" value="close" type="submit">Close</button>
+        </div>
+      </header>
+      <div class="pad">
+        <div class="muted" style="margin:-2px 0 10px 0">
+          ${buildingName ? `Building: <b>${buildingName}</b> • ` : ''} ${pmaNo ? `PMA: <b>${pmaNo}</b>` : ''}
+        </div>
+        <div id="cDocsBody"><div class="muted">Loading…</div></div>
+      </div>
+    </form>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  async function refresh(){
+    const rows = await listDocsForContract(contractId);
+    const html = `
+      <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:10px">
+        <table>
+          <thead>
+            <tr>
+              <th>File name</th><th>Category</th><th>Size</th><th>Type</th>
+              <th>Uploaded by</th><th>Uploaded at</th><th width="1%"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr data-doc="${r.id}">
+                <td>${fmt(r.file_name)}</td>
+                <td>${fmt(r.category)}</td>
+                <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
+                <td>${fmt(r.content_type)}</td>
+                <td>${fmt(r.uploaded_by)}</td>
+                <td>${fmt(r.uploaded_at)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn secondary sm" data-open="${r.id}">Open</button>
+                  <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                </td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    $("#cDocsBody", dlg).innerHTML = html;
+
+    $("#cDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
+      const id=b.dataset.open;
+      const row = rows.find(x=>x.id===id); if(!row) return;
+      try{ const url = await signedUrl(row.file_path); window.open(url, "_blank"); }
+      catch(err){ toast('Open failed: '+(err.message||err)); }
+    }));
+    $("#cDocsBody", dlg).querySelectorAll('[data-rm]').forEach(b=> b.addEventListener('click', async ()=>{
+      const id=b.dataset.rm;
+      if(!confirm('Delete this file?')) return;
+      try{ await deleteContractDocById(id); await refresh(); toast('Deleted.'); }
+      catch(err){ toast('Delete failed: '+(err.message||err)); }
+    }));
+  }
+  await refresh();
+
+  $("#cDocAddBtn", dlg).addEventListener("click", ()=> $("#cDocAddFiles", dlg).click());
+  $("#cDocAddFiles", dlg).addEventListener("change", async (e)=>{
+    const files = Array.from(e.target.files||[]);
+    if(!files.length) return;
+    try{
+      await uploadDocsForContract(contractId, pmaNo ?? null, buildingName ?? null, files);
+      await refresh();
+      toast(`Uploaded ${files.length} file(s).`);
+    } catch(err){ toast('Upload failed: '+(err.message||err)); }
+    e.target.value="";
+  });
 }
 
 /* ===================== INIT ===================== */
