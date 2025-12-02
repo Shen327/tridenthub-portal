@@ -33,17 +33,17 @@
     .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid rgba(255,255,255,.06)}
     .search{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;min-width:280px}
     .search input{all:unset;flex:1}
-    .content{padding:16px;overflow:auto}
+    .content{padding:16px;overflow-y:auto;overflow-wrap:hidden;}
     .panel{background:var(--panel);border:1px solid #334155;border-radius:14px}
     .panel header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
-    .panel .body{padding:12px 14px}
+    .panel .body{padding:12px 14px; overflow-x:auto;}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid rgba(59,130,246,.55);border-radius:12px;background:linear-gradient(#2b65f6,#1d4ed8);color:#fff;font-weight:700}
     .btn.secondary{background:rgba(255,255,255,.06);border-color:#475569;color:#e5e7eb}
     .btn.danger{background:#b91c1c;border-color:#b91c1c}
     .btn.neutral{background:rgba(255,255,255,.06);border-color:#64748b;color:#e2e8f0}
     .btn.sm { padding:.38rem .6rem; border-radius:10px; font-weight:600; }
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top}
+    table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;}
+    th,td{border-bottom:1px solid rgba(255,255,255,.06);padding:10px;text-align:left;vertical-align:top;}
     th{font-size:12px;color:var(--fg2)}
     tr:hover td{background:rgba(255,255,255,.03)}
     td.actions { width:1%; min-width:210px; white-space:nowrap; }
@@ -321,7 +321,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","manufacturing_no","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -388,6 +388,7 @@ const SCHEMAS = {
     {key:'building_name',label:'Building Name'},
     {key:'location',label:'Location (Address)'},
     {key:'manufacturer',label:'Manufacturer'},
+    {key:'manufacturing_no',label:'Manufacturing No'},
     {key:'model_name',label:'Model name'},
     {key:'capacity_kg',label:'Capacity (kg)'},
     {key:'capacity_persons',label:'Capacity (persons)'},
@@ -506,7 +507,7 @@ const store = {
 /* ---------- GLOBAL SEARCH (full-DB) ---------- */
 const SEARCHMAP = {
   contracts: ["building_name","manufacturer","equipment_type","number_lift","factory_code","location_state","pma_no","contract_type","contract_status","remark"],
-  equipments: ["pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","contract_status"],
+  equipments: ["pma_no","unit_no","comm_no","building_name","location","manufacturer","manufacturing_no","model_name","pma_status","contract_status"],
   tasks: ["title","type","status","priority","assigned_to","equipment_pma","location","remark","description"],
   inspections: ["title","subtype","status","assigned_to","location","equipment_pma","certificate_no","result","remark"],
   reports: ["title","remark","equipment_pma","location","created_by_id","assigned_to_id"],
@@ -537,10 +538,11 @@ function buildOrFilter(q, cols) {
     }
   });
 })();
+
 function smallColsFor(table) {
   const base = {
     contracts: ["building_name","manufacturer","equipment_type","pma_no","contract_type","contract_status","updated_at"],
-    equipments: [ "pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_status","contract_status","updated_at"],
+    equipments: [ "pma_no","unit_no","comm_no","building_name","location","manufacturer","manufacturing_no","model_name","pma_status","contract_status","updated_at"],
     tasks: [ "title","type","status","priority","assigned_to","equipment_pma","due_date","updated_at"],
     reports: [ "title","remark","equipment_pma","created_at"],
     attendance: [ "user_name","check_in_at","check_out_at","location_name"],
@@ -549,6 +551,7 @@ function smallColsFor(table) {
   };
   return base[table] || [];
 }
+
 function renderMini(headers, rows) {
   if (!rows?.length) return `<div class="muted">No matches.</div>`;
   return `
@@ -564,6 +567,7 @@ function renderMini(headers, rows) {
     </div>
   `;
 }
+
 async function globalSearch(q){
   if(!q || !UNLOCKED){ if(!UNLOCKED) toast("Unlock first"); return; }
   const requests = Object.entries(SEARCHMAP).map(async ([table, cols]) => {
@@ -1141,73 +1145,247 @@ function wireRealtime() {
 }
 
 /* ===================== DETAILS DIALOGS ===================== */
-const EQUIPMENT_DETAIL_FIELDS = [
-  "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name",
-  "capacity_kg","capacity_persons","capacity_persons_per_hour",
-  "speed_m/m","rise_m","stops_openings","stepwidth_mm","inclination",
-  "machine_type","motor_data","controller","software_version","operation",
-  "roping","rope_diameter_nos_length","rope_construction",
-  "pma_status","pma_expiry","contract_status","contract_expiry","created_at","updated_at"
+const ELEVATOR_DETAIL_FIELDS = [
+  "pma_no",
+  "comm_no",
+  "unit_no",
+  "building_name",
+  "location",
+  "manufacturer",
+  "manufacturing_no",
+  "type",
+  "model_name",
+  "capacity_kg",
+  "capacity_persons",
+  "speed_m/m",
+  "stops_openings",
+  "operation",
+  "controller",
+  "machine_type",
+  "motor_data",
+  "roping",
+  "rope_diameter_nos_length",
+  "pma_status",
+  "pma_expiry",
+  "contract_status",
+  "contract_expiry",
+  "created_at",
+  "updated_at"
 ];
+
+const ESCALATOR_DETAIL_FIELDS = [
+  "pma_no",
+  "comm_no",
+  "unit_no",
+  "building_name",
+  "location",
+  "manufacturer",
+  "manufacturing_no",
+  "type",
+  "model_name",
+  "capacity_persons_per_hour",
+  "speed_m/m",
+  "stepwidth_mm",
+  "inclination",
+  "rise_m",
+  "controller",
+  "machine_type",
+  "motor_data",
+  "pma_status",
+  "pma_expiry",
+  "contract_status",
+  "contract_expiry",
+  "created_at",
+  "updated_at"
+];
+
 const CONTRACT_DETAIL_FIELDS = [
-  "id","building_name","manufacturer","equipment_type","number_lift","factory_code","location_state",
-  "pma_no","pma_expiry","cf_validate","rates_per_month","contract_type",
-  "takeover_date","contract_start","contract_end","agreement_validity","service",
-  "contract_status","remark","created_at","updated_at"
+  "id",
+  "building_name",
+  "manufacturer",
+  "equipment_type",
+  "number_lift",
+  "factory_code",
+  "location_state",
+  "pma_no",
+  "pma_expiry",
+  "cf_validate",
+  "rates_per_month",
+  "contract_type",
+  "takeover_date",
+  "contract_start",
+  "contract_end",
+  "agreement_validity",
+  "service",
+  "contract_status",
+  "remark",
+  "created_at",
+  "updated_at"
 ];
+
+function isEscalatorEquipment(eq) {
+  const t = String(eq?.type || eq?.equipment_type || "").toLowerCase();
+  return (
+    t.includes("escalator") ||
+    t.includes("travelator") ||
+    t.includes("travellator")
+  );
+}
+
+/* nice label for the left column (first letter big, better names) */
+function prettyKeyLabel(key) {
+  const map = {
+    pma_no: "PMA No.",
+    comm_no: "Comm No.",
+    unit_no: "Unit No.",
+    building_name: "Building name",
+    location: "Location",
+    manufacturer: "Manufacturer",
+    manufacturing_no: "Manufacturing No.",
+    model_name: "Model",
+    capacity_kg: "Capacity (kg)",
+    capacity_persons: "Capacity (pax)",
+    capacity_persons_per_hour: "Capacity (pers/hr)",
+    "speed_m/m": "Speed (m/min)",
+    rise_m: "Rise (m)",
+    stepwidth_mm: "Step width (mm)",
+    stops_openings: "Stops & openings",
+    machine_type: "Machine type",
+    motor_data: "Motor data",
+    rope_diameter_nos_length: "Rope Ø × Nos × Length",
+    pma_status: "PMA status",
+    pma_expiry: "PMA expiry",
+    cf_validate: "CF validate",
+    contract_status: "Contract status",
+    contract_expiry: "Contract expiry",
+    created_at: "Created at",
+    updated_at: "Updated at",
+    operation: "Operation",
+    controller: "Control"
+  };
+  if (map[key]) return map[key];
+
+  // default: turn snake_case into "Title Case"
+  return key
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function formatDateSafe(val) {
   const d = parseAnyDate(val);
   return d ? d.toISOString().slice(0, 10) : String(val ?? "");
 }
+
 function daysLeftSafe(val) {
   const d = parseAnyDate(val);
   if (!d) return null;
   const today = new Date();
   const D = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const T = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const T = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate()
+  );
   return Math.round((D - T) / 86400000);
 }
+
+/* NEW: pretty label for keys (first char uppercase, underscores to spaces) */
+function keyLabel(key) {
+  if (!key) return "";
+  const s = String(key).replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 function kvGrid(obj, keys) {
-  const dateKeys = new Set(["pma_expiry","cf_validate","takeover_date","contract_start","contract_end","agreement_validity","created_at","updated_at"]);
-  const badgeKeys = new Set(["pma_expiry","contract_end"]);
+  const dateKeys = new Set([
+    "pma_expiry",
+    "cf_validate",
+    "takeover_date",
+    "contract_start",
+    "contract_end",
+    "agreement_validity",
+    "created_at",
+    "updated_at"
+  ]);
+  const badgeKeys = new Set(["pma_expiry", "contract_end"]);
+
   return `
     <div style="display:grid;grid-template-columns: 220px 1fr; gap:10px;">
-      ${keys.map(k => {
-        let rawVal = obj?.[k];
-        let val = dateKeys.has(k) ? formatDateSafe(rawVal) : fmt(rawVal);
-        let badge = "";
-        if (badgeKeys.has(k)) {
-          const dLeft = daysLeftSafe(rawVal);
-          if (typeof dLeft === "number") {
-            const color = dLeft < 0 ? "var(--danger)" : (dLeft <= 30 ? "rgb(234,179,8)" : "var(--ok)");
-            const text  = dLeft < 0 ? `${Math.abs(dLeft)} day(s) overdue`
-                        : dLeft === 0 ? "expires today"
-                        : `${dLeft} day(s) left`;
-            badge = `<span style="margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid ${color};color:${color};font-size:12px">${text}</span>`;
+      ${keys
+        .map((k) => {
+          let rawVal = obj?.[k];
+          let val = dateKeys.has(k) ? formatDateSafe(rawVal) : fmt(rawVal);
+          let badge = "";
+
+          if (badgeKeys.has(k)) {
+            const dLeft = daysLeftSafe(rawVal);
+            if (typeof dLeft === "number") {
+              const color =
+                dLeft < 0
+                  ? "var(--danger)"
+                  : dLeft <= 30
+                  ? "rgb(234,179,8)"
+                  : "var(--ok)";
+              const text =
+                dLeft < 0
+                  ? `${Math.abs(dLeft)} day(s) overdue`
+                  : dLeft === 0
+                  ? "expires today"
+                  : `${dLeft} day(s) left`;
+              badge = `<span style="margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid ${color};color:${color};font-size:12px">${text}</span>`;
+            }
           }
-        }
-        return `
-          <div class="muted" style="word-break:break-word">${k}</div>
-          <div style="word-break:break-word">${val}${badge}</div>
-        `;
-      }).join("")}
+
+          const label = prettyKeyLabel(k);
+
+          return `
+            <div class="muted" style="word-break:break-word">${label}</div>
+            <div style="word-break:break-word">${val}${badge}</div>
+          `;
+        })
+        .join("")}
     </div>
   `;
 }
+
 function miniTable(headers, rows) {
   if (!rows?.length) return `<div class="muted">No records.</div>`;
   return `
     <div style="overflow:auto;border:1px solid rgba(255,255,255,.06);border-radius:10px">
       <table style="width:100%;border-collapse:collapse">
-        <thead><tr>${headers.map(h=>`<th style="padding:8px 10px;font-size:12px;color:var(--fg2);border-bottom:1px solid rgba(255,255,255,.06)">${h}</th>`).join("")}</tr></thead>
+        <thead>
+          <tr>
+            ${headers
+              .map(
+                (h) =>
+                  `<th style="padding:8px 10px;font-size:12px;color:var(--fg2);border-bottom:1px solid rgba(255,255,255,.06)">${h}</th>`
+              )
+              .join("")}
+          </tr>
+        </thead>
         <tbody>
-          ${rows.map(r=>`<tr>${headers.map(h=>`<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)">${fmt(r[h])}</td>`).join("")}</tr>`).join("")}
+          ${rows
+            .map(
+              (r) =>
+                `<tr>${headers
+                  .map(
+                    (h) =>
+                      `<td style="padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06)">${fmt(
+                        r[h]
+                      )}</td>`
+                  )
+                  .join("")}</tr>`
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
   `;
 }
-async function showEquipmentDetails(equipId){
+
+async function showEquipmentDetails(equipId) {
   const dlg = document.createElement("dialog");
   dlg.className = "details";
   dlg.innerHTML = `
@@ -1218,38 +1396,85 @@ async function showEquipmentDetails(equipId){
       </header>
       <div class="pad" id="equipBody"><div class="muted">Loading…</div></div>
     </form>`;
-  document.body.appendChild(dlg); dlg.showModal();
-  dlg.addEventListener("close", ()=> dlg.remove());
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.addEventListener("close", () => dlg.remove());
 
   try {
-    const [eq] = await restSelectAll("equipments", `?id=eq.${encodeURIComponent(equipId)}`);
-    if (!eq) { $("#equipBody", dlg).innerHTML = `<div class="muted">Equipment not found.</div>`; return; }
+    const [eq] = await restSelectAll(
+      "equipments",
+      `?id=eq.${encodeURIComponent(equipId)}`
+    );
+    if (!eq) {
+      $("#equipBody", dlg).innerHTML =
+        `<div class="muted">Equipment not found.</div>`;
+      return;
+    }
+
     const pma = eq.pma_no ?? eq.pma ?? null;
+    const isEsc = isEscalatorEquipment(eq);
+    const overviewTitle = isEsc ? "Escalator Data" : "Elevator Data";
+    const fieldList = isEsc ? ESCALATOR_DETAIL_FIELDS : ELEVATOR_DETAIL_FIELDS;
 
-    const tasks   = pma ? await restSelectAll("tasks",   `?equipment_pma=eq.${encodeURIComponent(pma)}`) : [];
-    const reports = pma ? await restSelectAll("reports", `?equipment_pma=eq.${encodeURIComponent(pma)}`) : [];
+    const tasks = pma
+      ? await restSelectAll(
+          "tasks",
+          `?equipment_pma=eq.${encodeURIComponent(pma)}`
+        )
+      : [];
+    const reports = pma
+      ? await restSelectAll(
+          "reports",
+          `?equipment_pma=eq.${encodeURIComponent(pma)}`
+        )
+      : [];
 
-    const taskHeaders    = [ "title","type","status","priority","assigned_to","due_date","updated_at","created_at","completed_at"];
-    const reportHeaders  = [ "title","remark","created_at","check_in_at","check_out_at"];
+    const taskHeaders = [
+      "title",
+      "type",
+      "status",
+      "priority",
+      "assigned_to",
+      "due_date",
+      "updated_at",
+      "created_at",
+      "completed_at"
+    ];
+    const reportHeaders = [
+      "title",
+      "remark",
+      "created_at",
+      "check_in_at",
+      "check_out_at"
+    ];
 
     $("#equipBody", dlg).innerHTML = `
       <section style="margin-bottom:16px">
-        <h4 style="margin:0 0 10px">Overview</h4>
-        ${kvGrid(eq, EQUIPMENT_DETAIL_FIELDS)}
+        <h4 style="margin:0 0 10px">${overviewTitle}</h4>
+        ${kvGrid(eq, fieldList)}
       </section>
+
       <section style="margin-bottom:16px">
-        <h4 style="margin:0 0 10px">Recent Tasks (equipment_pma = ${fmt(pma)})</h4>
+        <h4 style="margin:0 0 10px">
+          Recent Tasks ${pma ? `(equipment_pma = ${fmt(pma)})` : ""}
+        </h4>
         ${miniTable(taskHeaders, tasks)}
       </section>
+
       <section>
-        <h4 style="margin:0 0 10px">Recent Reports (equipment_pma = ${fmt(pma)})</h4>
+        <h4 style="margin:0 0 10px">
+          Recent Reports ${pma ? `(equipment_pma = ${fmt(pma)})` : ""}
+        </h4>
         ${miniTable(reportHeaders, reports)}
       </section>
     `;
   } catch (err) {
-    $("#equipBody", dlg).innerHTML = `<div class="muted">Error: ${fmt(err.message)}</div>`;
+    console.error(err);
+    $("#equipBody", dlg).innerHTML =
+      `<div class="muted">Error: ${fmt(err.message)}</div>`;
   }
 }
+
 async function showContractDetails(contractId){
   const dlg = document.createElement("dialog");
   dlg.className = "details";
@@ -1273,7 +1498,7 @@ async function showContractDetails(contractId){
     const tasks = pma ? await restSelectAll("tasks", `?equipment_pma=eq.${encodeURIComponent(pma)}&order=created_at.desc`) : [];
 
     const taskHeaders = ["title","type","status","priority","assigned_to","due_date","updated_at"];
-    const equipHeaders = ["type","name","manufacturer","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
+    const equipHeaders = ["type","name","manufacturer","manufacturing_no","model_name","location","pma_status","pma_expiry","contract_status","contract_expiry"];
 
     $("#contractBody", dlg).innerHTML = `
       <section style="margin-bottom:16px">
