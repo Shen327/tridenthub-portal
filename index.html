@@ -124,17 +124,21 @@
     /* Hint text inside the form */
     dialog:not(.details) .muted{ color:#64748b; }
 
-    /* Buttons look fine on white; keep them as-is, but you can tweak if desired */
-    /* .btn.secondary in light dialog */
     dialog:not(.details) .btn.secondary{
       background:#f1f5f9;
       border-color:#cbd5e1;
       color:#0f172a;
     }
 
+    dialog:not(.details) .btn.neutral{
+      background:#e2e8f0;
+      border-color:#cbd5e1;
+      color:#0b1220;          
+      font-weight:600;
+    }
+
   </style>
 
-  <!-- Supabase JS for realtime & storage -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -219,15 +223,39 @@ function rowMatches(row, q, cols){
   }
   return false;
 }
+
 function wirePageSearch(){
   const inp = document.getElementById("pageQ");
   if(!inp) return;
-  inp.addEventListener("input", debounce(()=>{ PAGE_Q = inp.value.trim(); render(); },120));
-  document.addEventListener("keydown", (e)=>{
-    if(e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey){
-      e.preventDefault(); inp.focus();
-    } else if(e.key === "Escape" && document.activeElement === inp){
-      e.preventDefault(); inp.value=""; PAGE_Q=""; render();
+
+  inp.addEventListener(
+    "input",
+    debounce(() => {
+      PAGE_Q = inp.value.trim();
+      render();
+    }, 120)
+  );
+
+  document.addEventListener("keydown", (e) => {
+    const target = e.target;
+    const tag = (target.tagName || "").toLowerCase();
+    const isEditable =
+      tag === "input" ||
+      tag === "textarea" ||
+      tag === "select" ||
+      target.isContentEditable;
+
+    // If user is typing in a form field, don't hijack "/"
+    if (isEditable) return;
+
+    if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      inp.focus();
+    } else if (e.key === "Escape" && document.activeElement === inp) {
+      e.preventDefault();
+      inp.value = "";
+      PAGE_Q = "";
+      render();
     }
   });
 }
@@ -321,7 +349,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","manufacturing_no","model_name","pma_status","pma_expiry","contract_status","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_expiry","contract_expiry","updated_at"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -336,7 +364,7 @@ const SCHEMAS = {
     {key:'number_lift',label:'Number of lifts'},
     {key:'factory_code',label:'Factory code'},
     {key:'location_state',label:'Location (state)'},
-    {key:'pma_no',label:'PMA no'},
+    {key:'pma_no',label:'PMA No.'},
     {key:'pma_expiry',label:'PMA expiry (date)'},
     {key:'cf_validate',label:'CF validate (date)'},
     {key:'rates_per_month',label:'Rates / month'},
@@ -382,9 +410,9 @@ const SCHEMAS = {
   ],
   equipments: [
     {key:'type',label:'Type'},
-    {key:'pma_no',label:'PMA'},
-    {key:'unit_no',label:'Unit Number'},
-    {key:'comm_no',label:'Comm Number'},
+    {key:'pma_no',label:'PMA No.'},
+    {key:'unit_no',label:'Unit No.'},
+    {key:'comm_no',label:'Commissioning No.'},
     {key:'building_name',label:'Building Name'},
     {key:'location',label:'Location (Address)'},
     {key:'manufacturer',label:'Manufacturer'},
@@ -400,8 +428,7 @@ const SCHEMAS = {
     {key:'inclination',label:'Inclination'},
     {key:'machine_type',label:'Machine type'},
     {key:'motor_data',label:'Motor data',type:'textarea'},
-    {key:'controller',label:'Controller'},
-    {key:'software_version',label:'Software version'},
+    {key:'control_version',label:'Control / Version'},
     {key:'operation',label:'Operation'},
     {key:'roping',label:'Roping'},
     {key:'rope_diameter_nos_length',label:'Rope Diameter * Nos. * Length'},
@@ -497,8 +524,7 @@ const ELEVATOR_FORM_KEYS = [
   "stops_openings",
   "machine_type",
   "motor_data",
-  "controller",
-  "software_version",
+  "control_version",
   "operation",
   "roping",
   "rope_diameter_nos_length",
@@ -526,8 +552,7 @@ const ESCALATOR_FORM_KEYS = [
   "rise_m",
   "machine_type",
   "motor_data",
-  "controller",
-  "software_version",
+  "control_version",
   "operation",
   "pma_status",
   "pma_expiry",
@@ -912,10 +937,38 @@ function parseAnyDate(val) {
   }
   return null;
 }
+
+function isDateExpired(dateVal){
+  const d = parseAnyDate(dateVal);
+  if (!d) return null;
+  const today = new Date();
+
+  const D = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const T = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate()
+  );
+  return D < T;       
+}
+
+function computePmaStatus(expiryStr){
+  const expired = isDateExpired(expiryStr);
+  if (expired == null) return null;
+  return expired ? "Expired" : "Valid";
+}
+
+function computeContractStatus(expiryStr){
+  const expired = isDateExpired(expiryStr);
+  if (expired == null) return null;
+  return expired ? "Expired" : "Valid";
+}
+
 function isoDateOrNull(v){
   const d = parseAnyDate(v);
   return d ? d.toISOString().slice(0,10) : null;
 }
+
 const DATE_FIELDS = {
   contracts: ['pma_expiry','cf_validate','takeover_date','contract_start','contract_end','agreement_validity'],
   tasks:     ['due_date','checked_in_at','checked_out_at'],
@@ -923,9 +976,11 @@ const DATE_FIELDS = {
   equipments:['pma_expiry','contract_expiry'],
   sites:     [], hr:[], tools_mgmt:['calibration_due'], sub_contractors:[], support:['opened_at']
 };
+
 const NUMBER_FIELDS = {
   equipments: ['capacity_kg','capacity_persons','capacity_persons_per_hour','rise_m','stepwidth_mm','inclination','stops_openings']
 };
+
 function sanitizePayloadForTable(table, obj){
   const dates = new Set(DATE_FIELDS[table] || []);
   const nums  = new Set((NUMBER_FIELDS[table] || []).map(String));
@@ -939,6 +994,7 @@ function sanitizePayloadForTable(table, obj){
   }
   return out;
 }
+
 function tableForView(view){
   if (['services','callbacks','repairs'].includes(view)) return 'tasks';
   if (['inspection_cf','inspection_14th'].includes(view)) return 'inspections';
@@ -1102,7 +1158,7 @@ function openEquipmentForm(id){
 
   const grid = $("#eqFormGrid", dlg);
 
-  // start state from existing row (if editing)
+  // form state = all possible equipment fields
   const formState = {};
   (SCHEMAS.equipments || []).forEach(f => {
     formState[f.key] = row[f.key] ?? "";
@@ -1126,11 +1182,11 @@ function openEquipmentForm(id){
     });
   }
 
-  // Special field renderer for equipments: TYPE is a <select>
-  function equipmentFieldHTML(f, val, typeOptions){
+  // one field renderer, with special handling for type + expiry fields
+  function equipmentFieldHTML(f, val, typeOptions, state){
     const id = "f_" + f.key;
 
-    // TYPE = dropdown
+    // TYPE as <select>
     if (f.key === "type") {
       return `
         <div>
@@ -1143,7 +1199,55 @@ function openEquipmentForm(id){
         </div>`;
     }
 
-    // normal textarea
+    // PMA expiry with status badge
+    if (f.key === "pma_expiry") {
+      const status = state?.pma_status;
+      let badge = "";
+      if (status) {
+        const expired = status === "Expired";
+        const color  = expired ? "var(--danger)" : "var(--ok)";
+        const bg     = expired ? "rgba(239,68,68,.12)" : "rgba(22,163,74,.12)";
+        const border = expired ? "rgba(248,113,113,.9)" : "rgba(34,197,94,.9)";
+        badge = `<span class="badge"
+                      style="border:1px solid ${border};background:${bg};color:${color};">
+                   ${status}
+                 </span>`;
+      }
+      return `
+        <div>
+          <label for="${id}">${f.label}</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="${id}" value="${fmt(val)}" />
+            ${badge}
+          </div>
+        </div>`;
+    }
+
+    // Contract expiry with status badge
+    if (f.key === "contract_expiry") {
+      const status = state?.contract_status;
+      let badge = "";
+      if (status) {
+        const expired = status === "Expired";
+        const color  = expired ? "var(--danger)" : "var(--ok)";
+        const bg     = expired ? "rgba(239,68,68,.12)" : "rgba(22,163,74,.12)";
+        const border = expired ? "rgba(248,113,113,.9)" : "rgba(34,197,94,.9)";
+        badge = `<span class="badge"
+                      style="border:1px solid ${border};background:${bg};color:${color};">
+                   ${status}
+                 </span>`;
+      }
+      return `
+        <div>
+          <label for="${id}">${f.label}</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="${id}" value="${fmt(val)}" />
+            ${badge}
+          </div>
+        </div>`;
+    }
+
+    // textarea
     if (f.type === "textarea") {
       return `
         <div style="grid-column:1/-1">
@@ -1152,7 +1256,7 @@ function openEquipmentForm(id){
         </div>`;
     }
 
-    // normal text input
+    // normal input
     return `
       <div>
         <label for="${id}">${f.label}</label>
@@ -1163,16 +1267,16 @@ function openEquipmentForm(id){
   function renderFields(){
     if (!grid) return;
 
-    // keep anything already typed
     syncFromDom();
 
-    // build list of types: default list + every distinct type from DB
+    formState.pma_status      = computePmaStatus(formState.pma_expiry);
+    formState.contract_status = computeContractStatus(formState.contract_expiry);
+
     const typeSet = new Set(DEFAULT_EQUIPMENT_TYPES);
     (store.equipments || []).forEach(eq => {
       const t = (eq.type || "").trim();
       if (t) typeSet.add(t);
     });
-    // ensure current value is also present
     if (formState.type && !typeSet.has(formState.type)) {
       typeSet.add(formState.type);
     }
@@ -1185,16 +1289,19 @@ function openEquipmentForm(id){
       typeStr.includes("travellator");
 
     const keys = isEsc ? ESCALATOR_FORM_KEYS : ELEVATOR_FORM_KEYS;
-    const all = SCHEMAS.equipments || [];
-    const visible = all.filter(f => keys.includes(f.key));
+    const all  = SCHEMAS.equipments || [];
+
+    // show everything except the raw status fields (they are derived)
+    const visibleKeys = keys.filter(k => k !== "pma_status" && k !== "contract_status");
+    const visible = all.filter(f => visibleKeys.includes(f.key));
 
     grid.innerHTML =
       visible.map(f =>
-        equipmentFieldHTML(f, formState[f.key] ?? "", typeOptions)
+        equipmentFieldHTML(f, formState[f.key] ?? "", typeOptions, formState)
       ).join("") +
       docsSection;
 
-    // When TYPE changes → re-render to switch elevator/escalator fields
+    // TYPE -> switches between elevator/escalator layout
     const typeInput = byId(dlg, "f_type");
     if (typeInput) {
       typeInput.addEventListener("change", () => {
@@ -1207,15 +1314,24 @@ function openEquipmentForm(id){
       });
     }
 
-    // docs upload wiring (only when editing existing record)
+    // when expiry date changes, re-render to update status badges
+    ["pma_expiry","contract_expiry"].forEach(k => {
+      const inp = byId(dlg, "f_" + k);
+      if (inp) {
+        inp.addEventListener("change", () => renderFields());
+        inp.addEventListener("input", () => renderFields());
+      }
+    });
+
+    // docs upload (only when editing)
     if (id) {
       const docInput = $("#docFiles", dlg);
-      const choose = $("#chooseDocs", dlg);
+      const choose   = $("#chooseDocs", dlg);
       if (choose && docInput) {
         choose.onclick = () => docInput.click();
         docInput.onchange = async (e)=>{
           const files = Array.from(e.target.files || []);
-          if(!files.length) return;
+          if (!files.length) return;
           try {
             await uploadDocsForEquipment(id, row?.pma_no ?? null, files);
             toast(`Uploaded ${files.length} file(s).`);
@@ -1232,9 +1348,11 @@ function openEquipmentForm(id){
 
   $("#saveBtn", dlg)?.addEventListener("click", async ()=>{
     try{
+      // final sync
       syncFromDom();
+      formState.pma_status      = computePmaStatus(formState.pma_expiry);
+      formState.contract_status = computeContractStatus(formState.contract_expiry);
 
-      // payload = all fields from both profiles (elevator + escalator)
       const payload = {};
       const allKeys = new Set([
         ...ELEVATOR_FORM_KEYS,
@@ -1458,7 +1576,7 @@ const ELEVATOR_DETAIL_FIELDS = [
   "speed_m/m",
   "stops_openings",
   "operation",
-  "controller",
+  "control_version",
   "machine_type",
   "motor_data",
   "roping",
@@ -1486,7 +1604,7 @@ const ESCALATOR_DETAIL_FIELDS = [
   "stepwidth_mm",
   "inclination",
   "rise_m",
-  "controller",
+  "control_version",
   "machine_type",
   "motor_data",
   "pma_status",
@@ -1559,7 +1677,7 @@ function prettyKeyLabel(key) {
     created_at: "Created at",
     updated_at: "Updated at",
     operation: "Operation",
-    controller: "Control"
+    control_version: "Control / Version"
   };
   if (map[key]) return map[key];
 
@@ -1881,7 +1999,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
       </header>
       <div class="pad">
         <div class="muted" style="margin:-2px 0 10px 0">
-          ${pmaNo ? `PMA: <b>${pmaNo}</b>` : ''}
+          ${pmaNo ? `PMA No.: <b>${pmaNo}</b>` : ''}
         </div>
         <div id="eDocsBody"><div class="muted">Loading…</div></div>
       </div>
@@ -1893,25 +2011,26 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
     const rows = await listDocsForEquipment(equipmentId);
     const html = `
       <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:10px">
-        <table>
+        <table style="width:100%;border-collapse:collapse;table-layout:auto">
           <thead>
             <tr>
-              <th>File name</th><th>Category</th><th>Size</th><th>Type</th>
-              <th>Uploaded by</th><th>Uploaded at</th><th width="1%"></th>
+              <th>File name</th>
+              <th>Size</th>
+              <th>Uploaded at</th>
+              <th width="1%"></th>
             </tr>
           </thead>
           <tbody>
             ${rows.map(r=>`
               <tr data-doc="${r.id}">
                 <td>${fmt(r.file_name)}</td>
-                <td>${fmt(r.category)}</td>
                 <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
-                <td>${fmt(r.content_type)}</td>
-                <td>${fmt(r.uploaded_by)}</td>
                 <td>${fmt(r.uploaded_at)}</td>
-                <td style="white-space:nowrap">
-                  <button class="btn secondary sm" data-open="${r.id}">Open</button>
-                  <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                <td>
+                  <div style="display:flex;gap:6px;justify-content:flex-end;white-space:nowrap">
+                    <button class="btn secondary sm" data-open="${r.id}">Open</button>
+                    <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                  </div>
                 </td>
               </tr>`).join("")}
           </tbody>
@@ -1921,7 +2040,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
 
     $("#eDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
       const id=b.dataset.open;
-      const row = rows.find(x=>x.id===id); if(!row) return;
+      const row = rows.find(x=>String(x.id)===String(id)); if(!row) return;
       try{ const url = await signedUrl(EQUIP_BUCKET, row.file_path); window.open(url, "_blank"); }
       catch(err){ toast('Open failed: '+(err.message||err)); }
     }));
@@ -1932,6 +2051,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
       catch(err){ toast('Delete failed: '+(err.message||err)); }
     }));
   }
+
   await refresh();
 
   $("#eDocAddBtn", dlg).addEventListener("click", ()=> $("#eDocAddFiles", dlg).click());
@@ -2004,7 +2124,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
       </header>
       <div class="pad">
         <div class="muted" style="margin:-2px 0 10px 0">
-          ${buildingName ? `Building: <b>${buildingName}</b> • ` : ''} ${pmaNo ? `PMA: <b>${pmaNo}</b>` : ''}
+          ${buildingName ? `Building: <b>${buildingName}</b> • ` : ''} ${pmaNo ? `PMA No.: <b>${pmaNo}</b>` : ''}
         </div>
         <div id="cDocsBody"><div class="muted">Loading…</div></div>
       </div>
@@ -2016,25 +2136,26 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
     const rows = await listDocsForContract(contractId);
     const html = `
       <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:10px">
-        <table>
+        <table style="width:100%;border-collapse:collapse;table-layout:auto">
           <thead>
             <tr>
-              <th>File name</th><th>Category</th><th>Size</th><th>Type</th>
-              <th>Uploaded by</th><th>Uploaded at</th><th width="1%"></th>
+              <th>File name</th>
+              <th>Size</th>
+              <th>Uploaded at</th>
+              <th width="1%"></th>
             </tr>
           </thead>
           <tbody>
             ${rows.map(r=>`
               <tr data-doc="${r.id}">
                 <td>${fmt(r.file_name)}</td>
-                <td>${fmt(r.category)}</td>
                 <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
-                <td>${fmt(r.content_type)}</td>
-                <td>${fmt(r.uploaded_by)}</td>
                 <td>${fmt(r.uploaded_at)}</td>
-                <td style="white-space:nowrap">
-                  <button class="btn secondary sm" data-open="${r.id}">Open</button>
-                  <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                <td>
+                  <div style="display:flex;gap:6px;justify-content:flex-end;white-space:nowrap">
+                    <button class="btn secondary sm" data-open="${r.id}">Open</button>
+                    <button class="btn danger sm" data-rm="${r.id}">Del</button>
+                  </div>
                 </td>
               </tr>`).join("")}
           </tbody>
@@ -2044,7 +2165,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
 
     $("#cDocsBody", dlg).querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', async ()=>{
       const id=b.dataset.open;
-      const row = rows.find(x=>x.id===id); if(!row) return;
+      const row = rows.find(x=>String(x.id)===String(id)); if(!row) return;
       try{ const url = await signedUrl(CONTRACT_BUCKET, row.file_path); window.open(url, "_blank"); }
       catch(err){ toast('Open failed: '+(err.message||err)); }
     }));
@@ -2055,6 +2176,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
       catch(err){ toast('Delete failed: '+(err.message||err)); }
     }));
   }
+
   await refresh();
 
   $("#cDocAddBtn", dlg).addEventListener("click", ()=> $("#cDocAddFiles", dlg).click());
