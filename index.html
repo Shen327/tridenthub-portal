@@ -470,6 +470,88 @@ const SCHEMAS = {
   ],
 };
 
+const DEFAULT_EQUIPMENT_TYPES = [
+  "Elevator",
+  "Home Lift",
+  "Goods Lift",
+  "Escalator",
+  "Travelator",
+  "Service Lift",
+  "Dumbwaiter"
+];
+
+const ELEVATOR_FORM_KEYS = [
+  "type",
+  "pma_no",
+  "unit_no",
+  "comm_no",
+  "building_name",
+  "location",
+  "manufacturer",
+  "manufacturing_no",
+  "model_name",
+  "capacity_kg",
+  "capacity_persons",
+  "speed_m/m",
+  "rise_m",
+  "stops_openings",
+  "machine_type",
+  "motor_data",
+  "controller",
+  "software_version",
+  "operation",
+  "roping",
+  "rope_diameter_nos_length",
+  "rope_construction",
+  "pma_status",
+  "pma_expiry",
+  "contract_status",
+  "contract_expiry"
+];
+
+const ESCALATOR_FORM_KEYS = [
+  "type",
+  "pma_no",
+  "unit_no",
+  "comm_no",
+  "building_name",
+  "location",
+  "manufacturer",
+  "manufacturing_no",
+  "model_name",
+  "capacity_persons_per_hour",
+  "speed_m/m",
+  "stepwidth_mm",
+  "inclination",
+  "rise_m",
+  "machine_type",
+  "motor_data",
+  "controller",
+  "software_version",
+  "operation",
+  "pma_status",
+  "pma_expiry",
+  "contract_status",
+  "contract_expiry"
+];
+
+function isEscalatorTypeFromRow(row) {
+  const t = String(row?.type || row?.equipment_type || "").toLowerCase();
+  return (
+    t.includes("escalator") ||
+    t.includes("travelator") ||
+    t.includes("travellator")
+  );
+}
+
+function equipmentFormFieldsForRow(row) {
+  const base = SCHEMAS.equipments || [];
+  const keys = isEscalatorTypeFromRow(row)
+    ? ESCALATOR_FORM_KEYS
+    : ELEVATOR_FORM_KEYS;
+  return base.filter((f) => keys.includes(f.key));
+}
+
 const NAV = [
   { title:"Sales", items:[]},
   { title:"Project", items:[
@@ -886,6 +968,12 @@ function collectFrom(dlg, view){
 }
 
 function openForm(view, id){
+  // Equipments use a special filtered form (elevator / escalator)
+  if (view === "equipments") {
+    openEquipmentForm(id);
+    return;
+  }
+
   const isTaskPage       = ["services","callbacks","repairs"].includes(view);
   const isInspectionPage = ["inspection_cf","inspection_14th"].includes(view);
 
@@ -896,38 +984,42 @@ function openForm(view, id){
     view==="attendance"  ? store.attendance  :
     view==="checkins"    ? store.checkins    :
     view==="reports"     ? store.reports     :
-    view==="sites"       ? store.sites       :
-    view==="equipments"  ? store.equipments  : [];
+    view==="sites"       ? store.sites       : [];
 
-  const row = (id? source.find(r=> String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id)===String(id)) : null) || {};
+  const row = (id
+      ? source.find(r => String(r.id ?? r.pma_no ?? r.task_id ?? r.user_id) === String(id))
+      : null
+  ) || {};
+
   const docsSection =
-    (id && (view==="equipments" || view==="contracts"))
+    (id && view==="contracts")
       ? `<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:6px">
            <input id="docFiles" type="file" multiple style="display:none" />
            <button class="btn neutral sm" id="chooseDocs" type="button">Add docs</button>
-           <span class="muted" id="docHint">Upload will attach to this ${view.slice(0,-1)}.</span>
+           <span class="muted" id="docHint">Upload will attach to this contract.</span>
          </div>`
       : "";
 
   const dlg = document.createElement("dialog");
   dlg.innerHTML = `<form method="dialog">
     <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">${id?'Edit':'Add'} ${view.replace(/_/g,' ')}</h3>
+      <h3 style="margin:0">${id ? "Edit" : "Add"} ${view.replace(/_/g," ")}</h3>
       <button class="btn secondary" value="close" type="submit">✕</button>
     </header>
     <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
-      ${fieldsFor(view).map(f=> fieldHTML(f, row[f.key]) ).join('')}
+      ${fieldsFor(view).map(f => fieldHTML(f, row[f.key])).join("")}
       ${docsSection}
     </div>
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
-      <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : '' }</div>
+      <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : "" }</div>
       <div>
         <button class="btn secondary" value="close" type="submit">Cancel</button>
-        <button class="btn" id="saveBtn" type="button">${id?'Save':'Create'}</button>
+        <button class="btn" id="saveBtn" type="button">${id ? "Save" : "Create"}</button>
       </div>
     </div>
   </form>`;
-  document.body.appendChild(dlg); dlg.showModal();
+  document.body.appendChild(dlg);
+  dlg.showModal();
   dlg.addEventListener("close", ()=> dlg.remove());
 
   $("#saveBtn", dlg)?.addEventListener("click", async ()=>{
@@ -942,7 +1034,7 @@ function openForm(view, id){
   });
 
   $("#delBtn", dlg)?.addEventListener("click", async ()=>{
-    const nice = view.endsWith('s') ? view.slice(0,-1) : view;
+    const nice = view.endsWith("s") ? view.slice(0,-1) : view;
     if (!confirmDeleteTwice(nice)) return;
     try {
       await removeRow(view, id);
@@ -954,25 +1046,231 @@ function openForm(view, id){
     }
   });
 
-  // Docs upload
-  if (id && (view==="equipments" || view==="contracts")) {
-    $("#chooseDocs", dlg)?.addEventListener("click", ()=> $("#docFiles", dlg).click());
-    $("#docFiles", dlg)?.addEventListener("change", async (e)=>{
-      const files = Array.from(e.target.files || []);
-      if(!files.length) return;
-      try {
-        if (view==="equipments") {
-          await uploadDocsForEquipment(id, row?.pma_no ?? null, files);
-        } else {
-          await uploadDocsForContract(id, row?.pma_no ?? null, row?.building_name ?? null, files);
+  // Docs upload for contracts
+  if (id && view==="contracts") {
+    const docInput = $("#docFiles", dlg);
+    const choose = $("#chooseDocs", dlg);
+    if (choose && docInput) {
+      choose.onclick = () => docInput.click();
+      docInput.onchange = async (e)=>{
+        const files = Array.from(e.target.files || []);
+        if(!files.length) return;
+        try {
+          await uploadDocsForContract(
+            id,
+            row?.pma_no ?? null,
+            row?.building_name ?? null,
+            files
+          );
+          toast(`Uploaded ${files.length} file(s).`);
+        } catch (err) {
+          toast(`Upload failed: ${err.message||err}`);
         }
-        toast(`Uploaded ${files.length} file(s).`);
-      } catch (err) {
-        toast(`Upload failed: ${err.message||err}`);
-      }
-      e.target.value="";
+        e.target.value = "";
+      };
+    }
+  }
+}
+
+function openEquipmentForm(id){
+  const source = store.equipments || [];
+  const row = (id
+      ? source.find(r => String(r.id ?? r.pma_no) === String(id))
+      : null
+  ) || {};
+
+  const dlg = document.createElement("dialog");
+  dlg.innerHTML = `<form method="dialog">
+    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">${id ? "Edit" : "Add"} equipments</h3>
+      <button class="btn secondary" value="close" type="submit">✕</button>
+    </header>
+    <div id="eqFormGrid"
+         class="grid"
+         style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px"></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
+      <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : "" }</div>
+      <div>
+        <button class="btn secondary" value="close" type="submit">Cancel</button>
+        <button class="btn" id="saveBtn" type="button">${id ? "Save" : "Create"}</button>
+      </div>
+    </div>
+  </form>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.addEventListener("close", ()=> dlg.remove());
+
+  const grid = $("#eqFormGrid", dlg);
+
+  // start state from existing row (if editing)
+  const formState = {};
+  (SCHEMAS.equipments || []).forEach(f => {
+    formState[f.key] = row[f.key] ?? "";
+  });
+
+  const docsSection = id
+    ? `<div style="grid-column:1/-1;display:flex;gap:8px;align-items:center;margin-top:6px">
+         <input id="docFiles" type="file" multiple style="display:none" />
+         <button class="btn neutral sm" id="chooseDocs" type="button">Add docs</button>
+         <span class="muted" id="docHint">Upload will attach to this equipment.</span>
+       </div>`
+    : "";
+
+  function syncFromDom(){
+    if (!grid) return;
+    grid.querySelectorAll("input,textarea,select").forEach(el => {
+      const id = el.id || "";
+      const key = id.startsWith("f_") ? id.slice(2) : null;
+      if (!key) return;
+      formState[key] = el.value ?? "";
     });
   }
+
+  // Special field renderer for equipments: TYPE is a <select>
+  function equipmentFieldHTML(f, val, typeOptions){
+    const id = "f_" + f.key;
+
+    // TYPE = dropdown
+    if (f.key === "type") {
+      return `
+        <div>
+          <label for="${id}">${f.label}</label>
+          <select id="${id}">
+            ${typeOptions.map(t => `
+              <option value="${t}" ${t === val ? "selected" : ""}>${t}</option>
+            `).join("")}
+          </select>
+        </div>`;
+    }
+
+    // normal textarea
+    if (f.type === "textarea") {
+      return `
+        <div style="grid-column:1/-1">
+          <label for="${id}">${f.label}</label>
+          <textarea id="${id}">${fmt(val)}</textarea>
+        </div>`;
+    }
+
+    // normal text input
+    return `
+      <div>
+        <label for="${id}">${f.label}</label>
+        <input id="${id}" value="${fmt(val)}" />
+      </div>`;
+  }
+
+  function renderFields(){
+    if (!grid) return;
+
+    // keep anything already typed
+    syncFromDom();
+
+    // build list of types: default list + every distinct type from DB
+    const typeSet = new Set(DEFAULT_EQUIPMENT_TYPES);
+    (store.equipments || []).forEach(eq => {
+      const t = (eq.type || "").trim();
+      if (t) typeSet.add(t);
+    });
+    // ensure current value is also present
+    if (formState.type && !typeSet.has(formState.type)) {
+      typeSet.add(formState.type);
+    }
+    const typeOptions = Array.from(typeSet).sort((a,b)=>a.localeCompare(b));
+
+    const typeStr = String(formState.type || "").toLowerCase();
+    const isEsc =
+      typeStr.includes("escalator") ||
+      typeStr.includes("travelator") ||
+      typeStr.includes("travellator");
+
+    const keys = isEsc ? ESCALATOR_FORM_KEYS : ELEVATOR_FORM_KEYS;
+    const all = SCHEMAS.equipments || [];
+    const visible = all.filter(f => keys.includes(f.key));
+
+    grid.innerHTML =
+      visible.map(f =>
+        equipmentFieldHTML(f, formState[f.key] ?? "", typeOptions)
+      ).join("") +
+      docsSection;
+
+    // When TYPE changes → re-render to switch elevator/escalator fields
+    const typeInput = byId(dlg, "f_type");
+    if (typeInput) {
+      typeInput.addEventListener("change", () => {
+        formState.type = typeInput.value;
+        renderFields();
+      });
+      typeInput.addEventListener("input", () => {
+        formState.type = typeInput.value;
+        renderFields();
+      });
+    }
+
+    // docs upload wiring (only when editing existing record)
+    if (id) {
+      const docInput = $("#docFiles", dlg);
+      const choose = $("#chooseDocs", dlg);
+      if (choose && docInput) {
+        choose.onclick = () => docInput.click();
+        docInput.onchange = async (e)=>{
+          const files = Array.from(e.target.files || []);
+          if(!files.length) return;
+          try {
+            await uploadDocsForEquipment(id, row?.pma_no ?? null, files);
+            toast(`Uploaded ${files.length} file(s).`);
+          } catch (err) {
+            toast(`Upload failed: ${err.message||err}`);
+          }
+          e.target.value = "";
+        };
+      }
+    }
+  }
+
+  renderFields();
+
+  $("#saveBtn", dlg)?.addEventListener("click", async ()=>{
+    try{
+      syncFromDom();
+
+      // payload = all fields from both profiles (elevator + escalator)
+      const payload = {};
+      const allKeys = new Set([
+        ...ELEVATOR_FORM_KEYS,
+        ...ESCALATOR_FORM_KEYS
+      ]);
+      allKeys.forEach(k => {
+        if (k in formState) {
+          const v = formState[k];
+          payload[k] = v === "" ? null : v;
+        }
+      });
+
+      if(id) await updateRow("equipments", id, payload);
+      else   await addRow("equipments", payload);
+
+      await syncAll();
+      dlg.close();
+      toast(id ? "Saved." : "Created.");
+    }catch(err){
+      console.error(err);
+      toast(`Error: ${err.message||err}`);
+    }
+  });
+
+  $("#delBtn", dlg)?.addEventListener("click", async ()=>{
+    if (!id) return;
+    if (!confirmDeleteTwice("equipment")) return;
+    try{
+      await removeRow("equipments", id);
+      await syncAll();
+      dlg.close();
+      toast("Deleted.");
+    }catch(err){
+      toast(`Error: ${err.message||err}`);
+    }
+  });
 }
 
 function idFilter(id){ return `?id=eq.${encodeURIComponent(String(id))}`; }
