@@ -315,42 +315,17 @@ async function restSelectAll(table, qs = "", pageSize = PAGE_SIZE) {
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* ===================== PASSGATE ===================== */
-const PASS_PLAIN = "TRIDENTHUB_portal";
-const PASS_SALT  = "ideal-lab-trident-2025";
-const PASS_ITER  = 150000;
-const PASS_HASH  = "089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
-
 let UNLOCKED = false;
 let CURRENT_USER_NAME = null;  
-
-async function hashPass(p, s = PASS_SALT, i = PASS_ITER) {
-  if (!crypto?.subtle) return null;
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(p),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: enc.encode(s), iterations: i },
-    key,
-    256
-  );
-  return Array.from(new Uint8Array(bits))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 async function findNameByPasscode(code) {
   if (!code) return null;
 
   const safe = encodeURIComponent(code);
 
-  const rows = await restSelect(
+  const rows = await restSelectAll(
     "profiles",
-    `passcode=eq.${safe}&select=name`
+    `passcode=eq.${safe}&select=name,passcode`
   );
 
   if (!rows || !rows.length) return null;
@@ -361,15 +336,11 @@ async function findNameByPasscode(code) {
 function updateUserStatus() {
   const el = document.getElementById("statusText");
   if (!el) return;
-
-  if (!CURRENT_USER_NAME) {
-    el.textContent = "";
-  } else {
-    el.textContent = `Signed in as ${CURRENT_USER_NAME}`;
-  }
+  el.textContent = CURRENT_USER_NAME
+    ? `Signed in as ${CURRENT_USER_NAME}`
+    : "";
 }
 
-// ---- main unlock handler ----
 async function handleUnlock() {
   const errBox = document.getElementById("error");
   errBox.style.display = "none";
@@ -379,36 +350,18 @@ async function handleUnlock() {
 
   let name = null;
 
-  // 1) Try profiles.passcode
   try {
     name = await findNameByPasscode(code);
   } catch (err) {
     console.error("profile lookup failed", err);
   }
 
-  // 2) Optional: fall back to old master passcode as Admin
-  if (!name) {
-    try {
-      const dig = await hashPass(code || "");
-      if (
-        (dig && dig === PASS_HASH) ||  // hashed matches
-        (!dig && code === PASS_PLAIN)  // fallback if crypto not available
-      ) {
-        name = "Admin";
-      }
-    } catch (e) {
-      console.error("master pass check failed", e);
-    }
-  }
-
-  // 3) Still nothing → invalid passcode
   if (!name) {
     errBox.textContent = "Incorrect passcode. Try again.";
     errBox.style.display = "block";
     return;
   }
 
-  // 4) Success
   CURRENT_USER_NAME = name;
   UNLOCKED = true;
 
