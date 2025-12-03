@@ -315,24 +315,133 @@ async function restSelectAll(table, qs = "", pageSize = PAGE_SIZE) {
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* ===================== PASSGATE ===================== */
-const PASS_PLAIN="TRIDENTHUB_portal", PASS_SALT="ideal-lab-trident-2025", PASS_ITER=150000;
-const PASS_HASH="089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
-let UNLOCKED=false;
-async function hashPass(p,s=PASS_SALT,i=PASS_ITER){
-  if(!crypto?.subtle) return null;
-  const enc=new TextEncoder();
-  const key=await crypto.subtle.importKey("raw",enc.encode(p),"PBKDF2",false,["deriveBits"]);
-  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:enc.encode(s),iterations:i},key,256);
-  return Array.from(new Uint8Array(bits)).map(b=>b.toString(16).padStart(2,'0')).join("");
+const PASS_PLAIN = "TRIDENTHUB_portal";
+const PASS_SALT  = "ideal-lab-trident-2025";
+const PASS_ITER  = 150000;
+const PASS_HASH  = "089d2a57b838e21e6d15e2047a8fa824d4a0132744ce7141db0aea3fd940218f";
+
+let UNLOCKED = false;
+let CURRENT_USER_NAME = null;  
+
+async function hashPass(p, s = PASS_SALT, i = PASS_ITER) {
+  if (!crypto?.subtle) return null;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(p),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt: enc.encode(s), iterations: i },
+    key,
+    256
+  );
+  return Array.from(new Uint8Array(bits))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
-$("#unlock").addEventListener("click", async ()=>{
-  $("#error").style.display="none";
-  const dig = await hashPass($("#lockpw").value || "");
-  if( (dig && dig===PASS_HASH) || (!dig && $("#lockpw").value===PASS_PLAIN) ){
-    UNLOCKED=true; $("#lock").hidden=true; renderSidebar(); updateNewBtnLabel();
-    await syncAll();
-    wireRealtime(); // live updates
-  } else { $("#error").style.display="block"; }
+
+async function findNameByPasscode(code) {
+  if (!code) return null;
+
+  const safe = encodeURIComponent(code);
+
+  const rows = await restSelect(
+    "profiles",
+    `passcode=eq.${safe}&select=name`
+  );
+
+  if (!rows || !rows.length) return null;
+  const row = rows[0];
+  return row.name || null;
+}
+
+function updateUserStatus() {
+  const el = document.getElementById("statusText");
+  if (!el) return;
+
+  if (!CURRENT_USER_NAME) {
+    el.textContent = "";
+  } else {
+    el.textContent = `Signed in as ${CURRENT_USER_NAME}`;
+  }
+}
+
+// ---- main unlock handler ----
+async function handleUnlock() {
+  const errBox = document.getElementById("error");
+  errBox.style.display = "none";
+
+  const code = (document.getElementById("lockpw").value || "").trim();
+  if (!code) return;
+
+  let name = null;
+
+  // 1) Try profiles.passcode
+  try {
+    name = await findNameByPasscode(code);
+  } catch (err) {
+    console.error("profile lookup failed", err);
+  }
+
+  // 2) Optional: fall back to old master passcode as Admin
+  if (!name) {
+    try {
+      const dig = await hashPass(code || "");
+      if (
+        (dig && dig === PASS_HASH) ||  // hashed matches
+        (!dig && code === PASS_PLAIN)  // fallback if crypto not available
+      ) {
+        name = "Admin";
+      }
+    } catch (e) {
+      console.error("master pass check failed", e);
+    }
+  }
+
+  // 3) Still nothing → invalid passcode
+  if (!name) {
+    errBox.textContent = "Incorrect passcode. Try again.";
+    errBox.style.display = "block";
+    return;
+  }
+
+  // 4) Success
+  CURRENT_USER_NAME = name;
+  UNLOCKED = true;
+
+  document.getElementById("lock").hidden = true;
+
+  renderSidebar();
+  updateNewBtnLabel();
+  updateUserStatus();
+
+  await syncAll();
+  wireRealtime();
+}
+
+// ---- wire button + Enter key to this handler ----
+$("#unlock").addEventListener("click", () => {
+  handleUnlock().catch((err) => {
+    console.error(err);
+    const errBox = document.getElementById("error");
+    errBox.textContent = "Unexpected error. See console.";
+    errBox.style.display = "block";
+  });
+});
+
+$("#lockpw").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    handleUnlock().catch((err) => {
+      console.error(err);
+      const errBox = document.getElementById("error");
+      errBox.textContent = "Unexpected error. See console.";
+      errBox.style.display = "block";
+    });
+  }
 });
 
 /* ===================== NAV / COLUMNS / SCHEMAS ===================== */
@@ -349,7 +458,7 @@ const COLUMNS = {
   attendance: [ "user_id","user_name","check_in_at","check_out_at","location_name"],
   checkins:   [ "user_id","latitude","longitude","photo_path","created_at"],
   reports:    [ "task_id","title","description","location","equipment_pma","remark","check_in_at","check_out_at","completed_at","created_by_id","assigned_to_id"],
-  equipments: [ "type","pma_no","unit_no","comm_no","building_name","location","manufacturer","model_name","pma_expiry","contract_expiry","updated_at"],
+  equipments: [ "type","pma_no","location","pma_expiry","contract_expiry"],
   hr:              ["name","position","phone","email","employment_status","updated_at"],
   tools_mgmt:      ["tool_name","category","serial_no","status","assigned_to","location","calibration_due","updated_at"],
   sub_contractors: ["company_name","contact_person","phone","email","specialty","status","updated_at"],
@@ -416,7 +525,7 @@ const SCHEMAS = {
     {key:'building_name',label:'Building Name'},
     {key:'location',label:'Location (Address)'},
     {key:'manufacturer',label:'Manufacturer'},
-    {key:'manufacturing_no',label:'Manufacturing No'},
+    {key:'manufacturing_no',label:'Manufacturing No.'},
     {key:'model_name',label:'Model name'},
     {key:'capacity_kg',label:'Capacity (kg)'},
     {key:'capacity_persons',label:'Capacity (persons)'},
@@ -828,7 +937,12 @@ function render(){
 
   const extraHead = (currentView === "equipments" || currentView === "contracts")
     ? '<th width="1%">Docs</th>' : '';
-  const thead = '<thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+ extraHead +'<th width="1%"></th></tr></thead>';
+
+  const thead =
+  '<thead><tr>' +
+  cols.map(c => `<th>${keyLabel(c)}</th>`).join('') +
+  extraHead +
+  '<th width="1%"></th></tr></thead>';
 
   const tbodyHtml = '<tbody>'+ (rows||[]).map(r=>{
     const id = r.id ?? r.pma_no ?? r.task_id ?? r.user_id ?? '';
@@ -854,13 +968,24 @@ function render(){
 
   $("#viewHost").innerHTML = `<table>${thead}${tbodyHtml}</table>`;
   $("#viewHost").querySelectorAll('[data-edit]').forEach(b=> b.addEventListener('click', ()=> openForm(currentView, b.dataset.edit)) );
-  $("#viewHost").querySelectorAll('[data-del]').forEach(b=> b.addEventListener('click', ()=>{
-    const nice = currentView.endsWith('s') ? currentView.slice(0,-1) : currentView;
-    if (!confirmDeleteTwice(nice)) return;
-    removeRow(currentView, b.dataset.del)
-      .then(()=> { toast("Deleted."); })
-      .catch(err=> toast(`Error: ${err.message||err}`));
-  }));
+  $("#viewHost").querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener("click", () => {
+      const nice = currentView.endsWith("s")
+        ? currentView.slice(0, -1)
+        : currentView;
+
+      if (!confirmDeleteTwice(nice)) return;
+
+      removeRow(currentView, b.dataset.del)
+        .then(async () => {
+          await syncAll();
+          toast("Deleted.");
+        })
+        .catch((err) => {
+          toast(`Error: ${err.message || err}`);
+        });
+    })
+  );
 
 
   // Docs buttons
@@ -1024,7 +1149,6 @@ function collectFrom(dlg, view){
 }
 
 function openForm(view, id){
-  // Equipments use a special filtered form (elevator / escalator)
   if (view === "equipments") {
     openEquipmentForm(id);
     return;
@@ -1062,7 +1186,7 @@ function openForm(view, id){
       <h3 style="margin:0">${id ? "Edit" : "Add"} ${view.replace(/_/g," ")}</h3>
       <button class="btn secondary" value="close" type="submit">✕</button>
     </header>
-    <div class="grid" style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px">
+    <div class="grid" style="display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px">
       ${fieldsFor(view).map(f => fieldHTML(f, row[f.key])).join("")}
       ${docsSection}
     </div>
@@ -1143,7 +1267,7 @@ function openEquipmentForm(id){
     </header>
     <div id="eqFormGrid"
          class="grid"
-         style="display:grid;grid-template-columns:repeat(2,minmax(160px,1fr));gap:12px"></div>
+         style="display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px"></div>
     <div style="display:flex;justify-content:space-between;gap:8px;margin-top:14px">
       <div>${ id ? `<button class="btn danger" id="delBtn" type="button">Delete</button>` : "" }</div>
       <div>
@@ -1182,7 +1306,6 @@ function openEquipmentForm(id){
     });
   }
 
-  // one field renderer, with special handling for type + expiry fields
   function equipmentFieldHTML(f, val, typeOptions, state){
     const id = "f_" + f.key;
 
@@ -1707,11 +1830,15 @@ function daysLeftSafe(val) {
   return Math.round((D - T) / 86400000);
 }
 
-/* NEW: pretty label for keys (first char uppercase, underscores to spaces) */
 function keyLabel(key) {
   if (!key) return "";
-  const s = String(key).replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
+
+  return String(key)
+    .replace(/_/g, " ")        
+    .split(/\s+/)            
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))  
+    .join(" ");
 }
 
 function kvGrid(obj, keys) {
@@ -1967,7 +2094,7 @@ async function uploadDocsForEquipment(equipmentId, pmaNo, files, extras = {}) {
       file_size: file.size ?? null,
       category: extras.category ?? null,
       note: extras.note ?? null,
-      uploaded_by: extras.uploadedBy ?? null
+      uploaded_by: extras.uploadedBy ?? CURRENT_USER_NAME ?? null
     });
   }
   if (rows.length) await restInsert('equipment_docs', rows);
@@ -2016,6 +2143,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
             <tr>
               <th>File name</th>
               <th>Size</th>
+              <th>Uploaded by</th>
               <th>Uploaded at</th>
               <th width="1%"></th>
             </tr>
@@ -2025,6 +2153,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
               <tr data-doc="${r.id}">
                 <td>${fmt(r.file_name)}</td>
                 <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
+                <td>${fmt(r.uploaded_by)}</td>
                 <td>${fmt(r.uploaded_at)}</td>
                 <td>
                   <div style="display:flex;gap:6px;justify-content:flex-end;white-space:nowrap">
@@ -2059,7 +2188,7 @@ async function showEquipmentDocsDialog(equipmentId, pmaNo){
     const files = Array.from(e.target.files||[]);
     if(!files.length) return;
     try{
-      await uploadDocsForEquipment(equipmentId, pmaNo ?? null, files);
+      await uploadDocsForEquipment(equipmentId, pmaNo ?? null, files, {uploadedBy: CURRENT_USER_NAME});
       await refresh();
       toast(`Uploaded ${files.length} file(s).`);
     } catch(err){ toast('Upload failed: '+(err.message||err)); }
@@ -2074,9 +2203,10 @@ function contractDocPath(contractId, file){
   const safeName = file.name.replace(/[^\w.\- ]+/g,'_');
   return `contracts/${encodeURIComponent(String(contractId))}/${ts}_${rnd}_${safeName}`;
 }
+
 async function uploadDocsForContract(contractId, pmaNo, buildingName, files, extras = {}) {
   if (!files?.length) return [];
-  const bucket = supa.storage.from(CONTRACT_BUCKET);   // <<< contracts bucket
+  const bucket = supa.storage.from(CONTRACT_BUCKET);  
   const rows = [];
   for (const file of files) {
     const path = contractDocPath(contractId, file);
@@ -2092,7 +2222,7 @@ async function uploadDocsForContract(contractId, pmaNo, buildingName, files, ext
       file_size: file.size ?? null,
       category: extras.category ?? null,
       note: extras.note ?? null,
-      uploaded_by: extras.uploadedBy ?? null
+      uploaded_by: extras.uploadedBy ?? CURRENT_USER_NAME ?? null
     });
   }
   if (rows.length) await restInsert('contract_docs', rows);
@@ -2141,6 +2271,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
             <tr>
               <th>File name</th>
               <th>Size</th>
+              <th>Uploaded by</th>
               <th>Uploaded at</th>
               <th width="1%"></th>
             </tr>
@@ -2150,6 +2281,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
               <tr data-doc="${r.id}">
                 <td>${fmt(r.file_name)}</td>
                 <td>${r.file_size!=null ? (Math.round(r.file_size/1024))+' KB' : ''}</td>
+                <td>${fmt(r.uploaded_by)}</td>
                 <td>${fmt(r.uploaded_at)}</td>
                 <td>
                   <div style="display:flex;gap:6px;justify-content:flex-end;white-space:nowrap">
@@ -2184,7 +2316,7 @@ async function showContractDocsDialog(contractId, pmaNo, buildingName){
     const files = Array.from(e.target.files||[]);
     if(!files.length) return;
     try{
-      await uploadDocsForContract(contractId, pmaNo ?? null, buildingName ?? null, files);
+      await uploadDocsForContract(contractId, pmaNo ?? null, buildingName ?? null, files, {uploadedBy: CURRENT_USER_NAME});
       await refresh();
       toast(`Uploaded ${files.length} file(s).`);
     } catch(err){ toast('Upload failed: '+(err.message||err)); }
